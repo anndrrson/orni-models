@@ -1,11 +1,11 @@
 services:
   - type: web
     name: orni-models-api
-    runtime: docker
-    repo: https://github.com/anndrrson/orni-models
+    runtime: image
+    image:
+      url: ghcr.io/anndrrson/orni-models:latest
     region: ohio
     plan: free
-    dockerfilePath: ./Dockerfile
     envVars:
       - key: DATABASE_URL
         sync: false
