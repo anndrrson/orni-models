@@ -17,3 +17,5 @@ services:
         value: H1zX51s8Fba3FYymhSvQ5fTNK5AVwnJJMaDJ59upumAf
       - key: BIND_ADDR
         value: 0.0.0.0:8080
+      - key: FRONTEND_URL
+        sync: false
