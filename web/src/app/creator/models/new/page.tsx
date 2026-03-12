@@ -8,10 +8,10 @@ import { api } from '@/lib/api';
 const STEPS = ['Basics', 'System Prompt', 'Pricing', 'Review'];
 
 const BASE_MODELS = [
-  { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', name: 'Llama 3.1 8B', desc: 'Fast, efficient — great for most use cases' },
-  { id: 'mistralai/Mistral-7B-Instruct-v0.3', name: 'Mistral 7B', desc: 'Strong reasoning and instruction following' },
-  { id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', name: 'Llama 3.1 70B', desc: 'Most capable — best quality responses' },
-  { id: 'codellama/CodeLlama-34b-Instruct-hf', name: 'Code Llama 34B', desc: 'Specialized for code generation' },
+  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B', desc: 'Fast, efficient — great for most use cases' },
+  { id: 'qwen/qwen3-32b', name: 'Qwen3 32B', desc: 'Strong reasoning and instruction following' },
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', desc: 'Most capable — best quality responses' },
+  { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout 17B', desc: 'Latest Llama 4 — fast coding and reasoning' },
 ];
 
 export default function CreateModelPage() {
