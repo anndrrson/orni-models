@@ -5,7 +5,14 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Sparkles, Check } from 'lucide-react';
 import { api } from '@/lib/api';
 
-const STEPS = ['Basics', 'System Prompt', 'Content', 'Pricing', 'Review'];
+const STEPS = ['Basics', 'System Prompt', 'Pricing', 'Review'];
+
+const BASE_MODELS = [
+  { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo', name: 'Llama 3.1 8B', desc: 'Fast, efficient — great for most use cases' },
+  { id: 'mistralai/Mistral-7B-Instruct-v0.3', name: 'Mistral 7B', desc: 'Strong reasoning and instruction following' },
+  { id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', name: 'Llama 3.1 70B', desc: 'Most capable — best quality responses' },
+  { id: 'codellama/CodeLlama-34b-Instruct-hf', name: 'Code Llama 34B', desc: 'Specialized for code generation' },
+];
 
 export default function CreateModelPage() {
   const router = useRouter();
@@ -17,9 +24,8 @@ export default function CreateModelPage() {
     description: '',
     system_prompt: '',
     category: '',
+    base_model: BASE_MODELS[0].id,
     price_per_query: 100000,
-    content_text: '',
-    content_url: '',
   });
 
   const generateSlug = (name: string) =>
@@ -38,20 +44,15 @@ export default function CreateModelPage() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const model = await api.createModel({
+      await api.createModel({
         name: form.name,
         slug: form.slug,
         description: form.description || undefined,
         system_prompt: form.system_prompt,
+        base_model: form.base_model,
         category: form.category || undefined,
         price_per_query: form.price_per_query,
       });
-      if (form.content_text) {
-        await api.addContent(model.id, { source_type: 'text', content_text: form.content_text });
-      }
-      if (form.content_url) {
-        await api.addContent(model.id, { source_type: 'blog', source_url: form.content_url });
-      }
       router.push('/creator');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create model';
@@ -61,9 +62,12 @@ export default function CreateModelPage() {
     }
   };
 
+  const selectedBaseModel = BASE_MODELS.find((m) => m.id === form.base_model);
+
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-8">Create Your AI Model</h1>
+      <h1 className="text-3xl font-bold mb-2">Create Your AI Model</h1>
+      <p className="text-gray-400 text-sm mb-8">Your model will be live immediately — just write a system prompt and go.</p>
 
       <div className="flex items-center gap-2 mb-10">
         {STEPS.map((s, i) => (
@@ -71,12 +75,12 @@ export default function CreateModelPage() {
             <button
               onClick={() => i < step && setStep(i)}
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                i === step ? 'bg-indigo-500 text-white' : i < step ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-800 text-gray-500'
+                i === step ? 'bg-coral-500 text-white' : i < step ? 'bg-coral-500/20 text-coral-400' : 'bg-gray-800 text-gray-500'
               }`}
             >
               {i < step ? <Check className="w-4 h-4" /> : i + 1}
             </button>
-            {i < STEPS.length - 1 && <div className={`w-8 h-0.5 ${i < step ? 'bg-indigo-500/50' : 'bg-gray-800'}`} />}
+            {i < STEPS.length - 1 && <div className={`w-8 h-0.5 ${i < step ? 'bg-coral-500/50' : 'bg-gray-800'}`} />}
           </div>
         ))}
       </div>
@@ -85,7 +89,7 @@ export default function CreateModelPage() {
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Model Name</label>
-            <input type="text" value={form.name} onChange={(e) => updateField('name', e.target.value)} placeholder="e.g., Fitness Coach AI" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:outline-none" />
+            <input type="text" value={form.name} onChange={(e) => updateField('name', e.target.value)} placeholder="e.g., Fitness Coach AI" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">URL Slug</label>
@@ -96,11 +100,11 @@ export default function CreateModelPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-            <textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} rows={3} placeholder="What makes your AI unique?" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:outline-none resize-none" />
+            <textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} rows={3} placeholder="What makes your AI unique?" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none resize-none" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Category</label>
-            <select value={form.category} onChange={(e) => updateField('category', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:outline-none">
+            <select value={form.category} onChange={(e) => updateField('category', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none">
               <option value="">Select a category</option>
               <option value="fitness">Fitness & Health</option>
               <option value="finance">Finance & Investing</option>
@@ -111,39 +115,44 @@ export default function CreateModelPage() {
               <option value="lifestyle">Lifestyle</option>
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Base Model</label>
+            <div className="space-y-2">
+              {BASE_MODELS.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => updateField('base_model', m.id)}
+                  className={`w-full text-left rounded-xl border p-4 transition ${
+                    form.base_model === m.id
+                      ? 'border-coral-500 bg-coral-500/10'
+                      : 'border-gray-700 bg-gray-900 hover:border-gray-600'
+                  }`}
+                >
+                  <p className="font-medium text-white">{m.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{m.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
       {step === 1 && (
         <div className="space-y-4">
-          <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 flex gap-3">
-            <Sparkles className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-indigo-200">The system prompt defines your AI&apos;s personality. Write as if briefing someone to respond exactly like you.</p>
+          <div className="bg-coral-500/10 border border-coral-500/30 rounded-xl p-4 flex gap-3">
+            <Sparkles className="w-5 h-5 text-coral-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-coral-200">The system prompt defines your AI&apos;s personality. Write as if briefing someone to respond exactly like you. Your model goes live immediately!</p>
           </div>
-          <textarea value={form.system_prompt} onChange={(e) => updateField('system_prompt', e.target.value)} rows={12} placeholder="You are [Name], a [expertise]. You speak in a [tone] way..." className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:outline-none resize-none font-mono text-sm" />
+          <textarea value={form.system_prompt} onChange={(e) => updateField('system_prompt', e.target.value)} rows={12} placeholder="You are [Name], a [expertise]. You speak in a [tone] way..." className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none resize-none font-mono text-sm" />
           <p className="text-sm text-gray-500">{form.system_prompt.length} characters</p>
         </div>
       )}
 
       {step === 2 && (
         <div className="space-y-6">
-          <p className="text-gray-400">Add content so we can train the AI to sound like you.</p>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Paste Your Content</label>
-            <textarea value={form.content_text} onChange={(e) => updateField('content_text', e.target.value)} rows={8} placeholder="Paste articles, blog posts, newsletters..." className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:outline-none resize-none" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Blog URL (optional)</label>
-            <input type="url" value={form.content_url} onChange={(e) => updateField('content_url', e.target.value)} placeholder="https://yourblog.com" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:outline-none" />
-          </div>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Price per message: {priceDisplay(form.price_per_query)}</label>
-            <input type="range" min={10000} max={1000000} step={10000} value={form.price_per_query} onChange={(e) => updateField('price_per_query', parseInt(e.target.value))} className="w-full accent-indigo-500" />
+            <input type="range" min={10000} max={1000000} step={10000} value={form.price_per_query} onChange={(e) => updateField('price_per_query', parseInt(e.target.value))} className="w-full accent-coral-500" />
             <div className="flex justify-between text-sm text-gray-500 mt-1"><span>$0.01</span><span>$1.00</span></div>
           </div>
           <div className="bg-gray-900 rounded-xl p-4 space-y-2 text-sm">
@@ -153,13 +162,16 @@ export default function CreateModelPage() {
         </div>
       )}
 
-      {step === 4 && (
+      {step === 3 && (
         <div className="bg-gray-900 rounded-xl p-6 space-y-4">
           <div><span className="text-sm text-gray-500">Name</span><p className="text-white font-medium">{form.name}</p></div>
-          <div><span className="text-sm text-gray-500">URL</span><p className="text-indigo-400">ai.useorni.xyz/models/{form.slug}</p></div>
+          <div><span className="text-sm text-gray-500">URL</span><p className="text-coral-400">ai.useorni.xyz/models/{form.slug}</p></div>
+          <div><span className="text-sm text-gray-500">Base Model</span><p className="text-white">{selectedBaseModel?.name}</p></div>
           <div><span className="text-sm text-gray-500">Price</span><p className="text-white">{priceDisplay(form.price_per_query)} per message</p></div>
           <div><span className="text-sm text-gray-500">System Prompt</span><p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-4">{form.system_prompt}</p></div>
-          <div><span className="text-sm text-gray-500">Content</span><p className="text-gray-300 text-sm">{form.content_text ? `${form.content_text.length} chars` : 'None'}{form.content_url ? ` + ${form.content_url}` : ''}</p></div>
+          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-sm text-green-300">
+            Your model will be live immediately after creation!
+          </div>
         </div>
       )}
 
@@ -168,12 +180,12 @@ export default function CreateModelPage() {
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         {step < STEPS.length - 1 ? (
-          <button onClick={() => setStep(step + 1)} disabled={step === 0 && !form.name} className="flex items-center gap-2 px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors">
+          <button onClick={() => setStep(step + 1)} disabled={step === 0 && !form.name} className="flex items-center gap-2 px-6 py-3 bg-coral-500 hover:bg-coral-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors">
             Next <ArrowRight className="w-4 h-4" />
           </button>
         ) : (
-          <button onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors">
-            {loading ? 'Creating...' : 'Create Model'} <Sparkles className="w-4 h-4" />
+          <button onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-coral-500 to-purple-500 hover:from-coral-600 hover:to-purple-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors">
+            {loading ? 'Creating...' : 'Create & Go Live'} <Sparkles className="w-4 h-4" />
           </button>
         )}
       </div>

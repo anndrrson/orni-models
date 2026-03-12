@@ -31,6 +31,9 @@ sha2 = { workspace = true }
 rand = { workspace = true }
 hex = { workspace = true }
 
+# Password hashing
+argon2 = { workspace = true }
+
 # HTTP
 reqwest = { workspace = true }
 
@@ -46,3 +49,4 @@ tracing-subscriber = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 dotenvy = { workspace = true }
+urlencoding = { workspace = true }

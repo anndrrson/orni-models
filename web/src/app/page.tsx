@@ -21,12 +21,12 @@ export default function Home() {
     <div>
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-gray-800">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-transparent to-purple-600/10" />
+        <div className="absolute inset-0 bg-gradient-to-br from-coral-600/10 via-transparent to-purple-600/10" />
         <div className="relative mx-auto max-w-7xl px-4 py-24 text-center">
           <h1 className="mb-4 text-5xl font-bold tracking-tight md:text-6xl">
             AI models by your
             <br />
-            <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-coral-400 to-purple-400 bg-clip-text text-transparent">
               favorite creators
             </span>
           </h1>
@@ -37,7 +37,7 @@ export default function Home() {
           <div className="flex justify-center gap-4">
             <Link
               href="/models"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-3 font-semibold text-white transition hover:from-indigo-400 hover:to-purple-400"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-coral-500 to-purple-500 px-6 py-3 font-semibold text-white transition hover:from-coral-400 hover:to-purple-400"
             >
               Browse Models
               <ArrowRight className="h-4 w-4" />
@@ -70,7 +70,7 @@ export default function Home() {
               key={f.title}
               className="rounded-xl border border-gray-800 bg-gray-900/50 p-6"
             >
-              <f.icon className="mb-3 h-8 w-8 text-indigo-400" />
+              <f.icon className="mb-3 h-8 w-8 text-coral-400" />
               <h3 className="mb-2 text-lg font-semibold">{f.title}</h3>
               <p className="text-sm text-gray-400">{f.desc}</p>
             </div>
@@ -84,7 +84,7 @@ export default function Home() {
           <h2 className="text-2xl font-bold">Featured Models</h2>
           <Link
             href="/models"
-            className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300"
+            className="flex items-center gap-1 text-sm text-coral-400 hover:text-coral-300"
           >
             View all <ArrowRight className="h-3.5 w-3.5" />
           </Link>

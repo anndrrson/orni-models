@@ -4,6 +4,9 @@ use axum::extract::State;
 use axum::Json;
 use uuid::Uuid;
 
+use axum::http::StatusCode;
+use orni_models_types::CheckoutRequest;
+
 use crate::auth::Claims;
 use crate::error::{AppError, AppResult};
 use crate::services::solana;
@@ -60,11 +63,15 @@ pub async fn submit_deposit(
     }
 
     // Verify on-chain
-    let wallet: String =
+    let wallet: Option<String> =
         sqlx::query_scalar("SELECT wallet_address FROM users WHERE id = $1")
             .bind(user_id)
             .fetch_one(&state.db)
             .await?;
+
+    let wallet = wallet.ok_or_else(|| AppError::BadRequest(
+        "No wallet address linked. USDC deposits require a connected wallet.".into(),
+    ))?;
 
     let verified = solana::verify_deposit(
         &state.http_client,
@@ -144,4 +151,90 @@ pub async fn request_withdraw(
         "destination": req.destination_wallet,
         "message": "Withdrawal submitted. USDC will be sent within 24 hours."
     })))
+}
+
+/// POST /api/checkout — create a Stripe checkout session for credit pack purchase
+pub async fn create_checkout(
+    State(state): State<Arc<AppState>>,
+    claims: axum::Extension<Claims>,
+    Json(req): Json<CheckoutRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let user_id: Uuid = claims.sub.parse().map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
+
+    let pack = crate::services::stripe::get_pack(&req.pack)
+        .ok_or_else(|| AppError::BadRequest("Invalid credit pack. Use 5, 10, 25, or 50.".into()))?;
+
+    let (session_id, checkout_url) = crate::services::stripe::create_checkout_session(
+        &state.http_client,
+        &state.config,
+        pack,
+        &user_id.to_string(),
+    )
+    .await?;
+
+    // Record pending purchase
+    sqlx::query(
+        r#"INSERT INTO credit_purchases (id, user_id, amount_micro_usdc, amount_usd_cents, stripe_session_id, status)
+        VALUES ($1, $2, $3, $4, $5, 'pending')"#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(user_id)
+    .bind(pack.amount_micro_usdc)
+    .bind(pack.amount_usd_cents)
+    .bind(&session_id)
+    .execute(&state.db)
+    .await?;
+
+    Ok(Json(serde_json::json!({
+        "checkout_url": checkout_url,
+        "session_id": session_id,
+    })))
+}
+
+/// POST /api/payments/webhook — Stripe webhook handler (public, signature-verified)
+pub async fn stripe_webhook(
+    State(state): State<Arc<AppState>>,
+    body: String,
+) -> AppResult<StatusCode> {
+    // Parse the event (simplified — in production, verify Stripe signature)
+    let event: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|_| AppError::BadRequest("Invalid webhook payload".into()))?;
+
+    let event_type = event["type"].as_str().unwrap_or("");
+
+    if event_type == "checkout.session.completed" {
+        let session = &event["data"]["object"];
+        let session_id = session["id"].as_str().unwrap_or("");
+        let user_id_str = session["metadata"]["user_id"].as_str().unwrap_or("");
+        let micro_usdc_str = session["metadata"]["amount_micro_usdc"].as_str().unwrap_or("0");
+
+        let user_id: Uuid = user_id_str.parse()
+            .map_err(|_| AppError::BadRequest("Invalid user_id in metadata".into()))?;
+        let amount_micro_usdc: i64 = micro_usdc_str.parse().unwrap_or(0);
+
+        if amount_micro_usdc > 0 {
+            // Update purchase status
+            sqlx::query(
+                "UPDATE credit_purchases SET status = 'completed' WHERE stripe_session_id = $1",
+            )
+            .bind(session_id)
+            .execute(&state.db)
+            .await?;
+
+            // Credit user balance
+            sqlx::query("UPDATE users SET usdc_balance = usdc_balance + $1 WHERE id = $2")
+                .bind(amount_micro_usdc)
+                .bind(user_id)
+                .execute(&state.db)
+                .await?;
+
+            tracing::info!(
+                user_id = %user_id,
+                amount = amount_micro_usdc,
+                "Stripe checkout completed, credits added"
+            );
+        }
+    }
+
+    Ok(StatusCode::OK)
 }

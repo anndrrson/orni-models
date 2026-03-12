@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getModels, type Model } from "@/lib/api";
+import { getModels, getFeaturedModels, type Model } from "@/lib/api";
 import ModelCard from "@/components/ModelCard";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -32,6 +32,7 @@ export default function BrowsePage() {
   const [category, setCategory] = useState("All");
   const [sort, setSort] = useState("popular");
   const [page, setPage] = useState(1);
+  const [featured, setFeatured] = useState<Model[]>([]);
 
   const fetchModels = useCallback(async () => {
     setLoading(true);
@@ -57,6 +58,10 @@ export default function BrowsePage() {
   }, [fetchModels]);
 
   useEffect(() => {
+    getFeaturedModels().then(setFeatured).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     setPage(1);
   }, [search, category, sort]);
 
@@ -65,6 +70,18 @@ export default function BrowsePage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="mb-6 text-3xl font-bold">Browse Models</h1>
+
+      {/* Featured Models */}
+      {featured.length > 0 && (
+        <div className="mb-10">
+          <h2 className="mb-4 text-xl font-semibold text-coral-300">Featured Models</h2>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {featured.map((m) => (
+              <ModelCard key={m.id} model={m} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center">
@@ -75,7 +92,7 @@ export default function BrowsePage() {
             placeholder="Search models..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-gray-700 bg-gray-900 py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none focus:border-indigo-500"
+            className="w-full rounded-xl border border-gray-700 bg-gray-900 py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none focus:border-coral-500"
           />
         </div>
         <div className="flex gap-2 overflow-x-auto">
@@ -85,7 +102,7 @@ export default function BrowsePage() {
               onClick={() => setCategory(cat)}
               className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 category === cat
-                  ? "bg-indigo-500 text-white"
+                  ? "bg-coral-500 text-white"
                   : "bg-gray-800 text-gray-400 hover:bg-gray-700"
               }`}
             >
@@ -96,7 +113,7 @@ export default function BrowsePage() {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="rounded-xl border border-gray-700 bg-gray-900 px-3 py-2.5 text-sm text-gray-300 outline-none focus:border-indigo-500"
+          className="rounded-xl border border-gray-700 bg-gray-900 px-3 py-2.5 text-sm text-gray-300 outline-none focus:border-coral-500"
         >
           {SORT_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>

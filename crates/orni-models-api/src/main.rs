@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::middleware;
-use axum::routing::{get, post, put};
+use axum::routing::{delete, get, post, put};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
 use tower_http::cors::CorsLayer;
@@ -46,6 +46,7 @@ async fn main() -> anyhow::Result<()> {
         config: config.clone(),
         http_client: reqwest::Client::new(),
         nonce_store: Arc::new(NonceStore::new()),
+        guest_rate_limits: Arc::new(Default::default()),
     });
 
     // Public routes
@@ -53,28 +54,90 @@ async fn main() -> anyhow::Result<()> {
         .route("/auth/nonce", post(routes::auth::get_nonce))
         .route("/auth/verify", post(routes::auth::verify))
         .route("/models", get(routes::marketplace::browse))
-        .route("/models/{slug}", get(routes::models::get_model));
+        .route("/models/featured", get(routes::marketplace::get_featured))
+        .route("/models/{slug}", get(routes::models::get_model))
+        .route("/models/{slug}/reviews", get(routes::models::get_reviews))
+        .route("/ai", get(routes::ai::get_ai_key))
+        .route(
+            "/creator/{did}/profile",
+            get(routes::identity::get_creator_profile),
+        )
+        .route("/creators/{slug}", get(routes::creators::get_creator_by_slug))
+        .route("/auth/register", post(routes::auth::register_email))
+        .route("/auth/login", post(routes::auth::login_email))
+        .route("/payments/webhook", post(routes::payments::stripe_webhook));
 
     // Protected routes
     let protected = Router::new()
+        // Chat
         .route("/chat/{slug}/message", post(routes::chat::send_message))
+        .route("/chat/{slug}/usage", get(routes::chat::get_usage))
+        .route("/chat/sessions", get(routes::chat::list_sessions))
+        .route(
+            "/chat/sessions/{id}/messages",
+            get(routes::chat::get_session_messages),
+        )
+        // Creator
         .route("/creator/stats", get(routes::creator::get_stats))
         .route("/creator/models", get(routes::creator::get_models))
-        .route("/creator/models/{id}", get(routes::creator::get_model_detail))
-        .route("/creator/models/{id}/fine-tune", post(routes::creator::start_fine_tune))
-        .route("/creator/models/{id}/publish", post(routes::creator::publish_model))
+        .route(
+            "/creator/models/{id}",
+            get(routes::creator::get_model_detail),
+        )
+        .route(
+            "/creator/models/{id}/fine-tune",
+            post(routes::creator::start_fine_tune),
+        )
+        .route(
+            "/creator/models/{id}/publish",
+            post(routes::creator::publish_model),
+        )
+        .route(
+            "/creator/models/{id}/status",
+            put(routes::creator::toggle_status),
+        )
+        .route("/creator/earnings", get(routes::creator::get_earnings))
+        // Models
         .route("/models/create", post(routes::models::create_model))
         .route("/models/id/{id}", put(routes::models::update_model))
-        .route("/models/id/{id}/content", post(routes::models::add_content))
+        .route(
+            "/models/id/{id}/content",
+            post(routes::models::add_content),
+        )
+        .route(
+            "/models/{slug}/review",
+            post(routes::models::create_review),
+        )
+        // Payments
         .route("/balance", get(routes::payments::get_balance))
         .route("/deposits", post(routes::payments::submit_deposit))
         .route("/withdraw", post(routes::payments::request_withdraw))
+        .route("/checkout", post(routes::payments::create_checkout))
+        // Identity
+        .route("/identity/link", post(routes::identity::link_did))
+        // API Keys
+        .route("/keys", post(routes::api_keys::create_api_key))
+        .route("/keys", get(routes::api_keys::list_api_keys))
+        .route("/keys/{id}", delete(routes::api_keys::revoke_api_key))
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth::auth_middleware,
         ));
 
+    // Root-level routes (not under /api)
+    let root_routes = Router::new()
+        .route("/agents.txt", get(routes::discovery::agents_txt))
+        .route(
+            "/.well-known/said.json",
+            get(routes::discovery::well_known_said),
+        )
+        .route(
+            "/v1/chat/completions",
+            post(routes::openai_compat::chat_completions),
+        );
+
     let app = Router::new()
+        .merge(root_routes)
         .nest("/api", public.merge(protected))
         .with_state(state)
         .layer(CorsLayer::permissive())

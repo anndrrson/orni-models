@@ -17,6 +17,12 @@ pub struct Config {
     pub r2_secret_key: Option<String>,
     pub r2_bucket: String,
     pub platform_share_bps: u32, // basis points (1500 = 15%)
+    pub anthropic_api_key: String,
+    pub said_cloud_url: String,
+    pub stripe_secret_key: Option<String>,
+    pub stripe_webhook_secret: Option<String>,
+    pub frontend_url: String,
+    pub platform_did: String,
 }
 
 impl Config {
@@ -44,6 +50,13 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(1500),
+            anthropic_api_key: env::var("ANTHROPIC_API_KEY").unwrap_or_default(),
+            said_cloud_url: env::var("SAID_CLOUD_URL")
+                .unwrap_or_else(|_| "http://localhost:8080".into()),
+            stripe_secret_key: env::var("STRIPE_SECRET_KEY").ok(),
+            stripe_webhook_secret: env::var("STRIPE_WEBHOOK_SECRET").ok(),
+            frontend_url: env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:3000".into()),
+            platform_did: env::var("PLATFORM_DID").unwrap_or_else(|_| "did:key:orni-models-platform".into()),
         }
     }
 }

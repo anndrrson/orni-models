@@ -21,6 +21,7 @@ pub async fn browse(
         Some("newest") => "m.created_at DESC",
         Some("price_low") => "m.price_per_query ASC",
         Some("price_high") => "m.price_per_query DESC",
+        Some("top_rated") => "m.avg_rating DESC, m.review_count DESC",
         _ => "m.total_queries DESC",
     };
 
@@ -70,7 +71,9 @@ pub async fn browse(
         SELECT
             m.id, m.slug, m.name, m.description, m.avatar_url,
             u.display_name as creator_name, u.wallet_address as creator_wallet,
-            m.status, m.price_per_query, m.total_queries, m.category, m.tags
+            m.status, m.price_per_query, m.total_queries, m.category, m.tags,
+            u.did as creator_did, COALESCE(u.said_verified, false) as creator_verified,
+            m.is_featured, m.free_queries_per_day
         FROM models m
         JOIN users u ON u.id = m.creator_id
         WHERE m.status = 'live'
@@ -106,4 +109,29 @@ pub async fn browse(
         page,
         limit,
     }))
+}
+
+/// GET /api/models/featured — returns top 6 featured live models
+pub async fn get_featured(
+    State(state): State<Arc<AppState>>,
+) -> AppResult<Json<Vec<ModelCard>>> {
+    let models = sqlx::query_as::<_, ModelCard>(
+        r#"
+        SELECT
+            m.id, m.slug, m.name, m.description, m.avatar_url,
+            u.display_name as creator_name, u.wallet_address as creator_wallet,
+            m.status, m.price_per_query, m.total_queries, m.category, m.tags,
+            u.did as creator_did, COALESCE(u.said_verified, false) as creator_verified,
+            m.is_featured, m.free_queries_per_day
+        FROM models m
+        JOIN users u ON u.id = m.creator_id
+        WHERE m.status = 'live' AND m.is_featured = true
+        ORDER BY m.total_queries DESC
+        LIMIT 6
+        "#,
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(models))
 }

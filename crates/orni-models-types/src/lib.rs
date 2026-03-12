@@ -7,7 +7,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct User {
     pub id: Uuid,
-    pub wallet_address: String,
+    pub wallet_address: Option<String>,
     pub username: Option<String>,
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
@@ -15,6 +15,12 @@ pub struct User {
     pub usdc_balance: i64, // in micro-USDC (6 decimals)
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    // Email auth fields
+    pub email: Option<String>,
+    #[serde(skip_serializing)]
+    pub password_hash: Option<String>,
+    pub stripe_customer_id: Option<String>,
+    pub slug: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, PartialEq)]
@@ -45,6 +51,13 @@ pub struct Model {
     pub total_revenue: i64,
     pub category: Option<String>,
     pub tags: Vec<String>,
+    pub self_hosted_node_id: Option<Uuid>,
+    pub self_hosted_endpoint: Option<String>,
+    pub is_featured: bool,
+    pub is_platform_model: bool,
+    pub free_queries_per_day: i32,
+    pub avg_rating: f64,
+    pub review_count: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -187,6 +200,24 @@ pub struct AuthResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct EmailRegisterRequest {
+    pub email: String,
+    pub password: String,
+    pub display_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EmailLoginRequest {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CheckoutRequest {
+    pub pack: String, // "5", "10", "25", "50"
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CreateModelRequest {
     pub name: String,
     pub slug: String,
@@ -217,12 +248,16 @@ pub struct ModelCard {
     pub description: Option<String>,
     pub avatar_url: Option<String>,
     pub creator_name: Option<String>,
-    pub creator_wallet: String,
+    pub creator_wallet: Option<String>,
     pub status: ModelStatus,
     pub price_per_query: i64,
     pub total_queries: i64,
     pub category: Option<String>,
     pub tags: Vec<String>,
+    pub creator_did: Option<String>,
+    pub creator_verified: bool,
+    pub is_featured: bool,
+    pub free_queries_per_day: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -276,6 +311,26 @@ pub struct MarketplaceResponse {
     pub total: i64,
     pub page: i64,
     pub limit: i64,
+}
+
+// ── Identity Linking Types ──
+
+#[derive(Debug, Deserialize)]
+pub struct LinkDidRequest {
+    pub did: String,
+    pub said_token: String,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct CreatorProfile {
+    pub wallet_address: Option<String>,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub did: Option<String>,
+    pub said_verified: bool,
+    pub said_profile_url: Option<String>,
+    pub model_count: Option<i64>,
+    pub total_queries: Option<i64>,
 }
 
 // ── Inference Types ──
@@ -345,4 +400,156 @@ pub struct CreatorModelDetail {
     pub fine_tune_jobs: Vec<FineTuneJob>,
     pub recent_queries: i64,
     pub recent_revenue: i64,
+}
+
+// ── Chat Session Types ──
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct SessionSummary {
+    pub id: Uuid,
+    pub model_id: Uuid,
+    pub model_name: String,
+    pub model_slug: String,
+    pub last_message: Option<String>,
+    pub message_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// ── API Key Types ──
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ApiKey {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub model_id: Uuid,
+    pub key_hash: String,
+    pub key_prefix: String,
+    pub name: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub is_active: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateApiKeyRequest {
+    pub model_id: Uuid,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreateApiKeyResponse {
+    pub id: Uuid,
+    pub key: String,
+    pub key_prefix: String,
+    pub name: Option<String>,
+    pub model_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct ApiKeyInfo {
+    pub id: Uuid,
+    pub key_prefix: String,
+    pub name: Option<String>,
+    pub model_id: Uuid,
+    pub model_name: Option<String>,
+    pub model_slug: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub is_active: bool,
+}
+
+// ── OpenAI-Compatible Types ──
+
+#[derive(Debug, Deserialize)]
+pub struct OpenAIChatRequest {
+    pub model: String,
+    pub messages: Vec<InferenceChatMessage>,
+    pub stream: Option<bool>,
+    pub max_tokens: Option<u32>,
+    pub temperature: Option<f32>,
+}
+
+// ── Model Review Types ──
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ModelReview {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub model_id: Uuid,
+    pub rating: i32,
+    pub review_text: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct ReviewWithUser {
+    pub id: Uuid,
+    pub rating: i32,
+    pub review_text: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateReviewRequest {
+    pub rating: i32,
+    pub review_text: Option<String>,
+}
+
+// ── Creator Public Profile Types ──
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct CreatorPublicProfile {
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub slug: Option<String>,
+    pub did: Option<String>,
+    pub said_verified: bool,
+    pub model_count: i64,
+    pub total_queries: i64,
+    pub created_at: DateTime<Utc>,
+}
+
+// ── Earnings Types ──
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct DailyEarning {
+    pub date: chrono::NaiveDate,
+    pub amount: i64,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct ModelEarning {
+    pub model_id: Uuid,
+    pub model_name: String,
+    pub model_slug: String,
+    pub total_revenue: i64,
+    pub creator_earnings: i64,
+    pub query_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EarningsResponse {
+    pub daily: Vec<DailyEarning>,
+    pub per_model: Vec<ModelEarning>,
+    pub total_earnings: i64,
+    pub total_revenue: i64,
+}
+
+// ── Usage Display Types ──
+
+#[derive(Debug, Serialize)]
+pub struct UsageResponse {
+    pub used: i32,
+    pub limit: i32,
+    pub is_free: bool,
+}
+
+// ── Status Toggle Types ──
+
+#[derive(Debug, Deserialize)]
+pub struct StatusToggleRequest {
+    pub status: ModelStatus,
 }

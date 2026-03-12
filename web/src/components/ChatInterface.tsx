@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { sendMessage } from "@/lib/api";
+import { sendMessage, getSessionMessages } from "@/lib/api";
 import { Send, Loader2 } from "lucide-react";
 
 interface Message {
@@ -14,6 +14,8 @@ interface ChatInterfaceProps {
   pricePerQuery: number;
   balance: number | null;
   onBalanceUpdate?: () => void;
+  initialSessionId?: string;
+  onSessionChange?: (sessionId: string) => void;
 }
 
 export default function ChatInterface({
@@ -21,11 +23,13 @@ export default function ChatInterface({
   pricePerQuery,
   balance,
   onBalanceUpdate,
+  initialSessionId,
+  onSessionChange,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId, setSessionId] = useState<string | undefined>(initialSessionId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -35,6 +39,22 @@ export default function ChatInterface({
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Load history when resuming a session
+  useEffect(() => {
+    if (initialSessionId) {
+      getSessionMessages(initialSessionId)
+        .then((msgs) => {
+          setMessages(
+            msgs
+              .filter((m) => m.role !== "system")
+              .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))
+          );
+          setSessionId(initialSessionId);
+        })
+        .catch(() => {});
+    }
+  }, [initialSessionId]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -61,7 +81,10 @@ export default function ChatInterface({
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
-      const stream = sendMessage(slug, text, sessionId);
+      const stream = sendMessage(slug, text, sessionId, (newSessionId) => {
+        setSessionId(newSessionId);
+        onSessionChange?.(newSessionId);
+      });
       const reader = stream.getReader();
 
       while (true) {
@@ -111,7 +134,7 @@ export default function ChatInterface({
             <div
               className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
                 msg.role === "user"
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-coral-600 text-white"
                   : "bg-gray-800 text-gray-200"
               }`}
             >
@@ -141,12 +164,12 @@ export default function ChatInterface({
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder="Type a message..."
             disabled={isStreaming}
-            className="flex-1 rounded-xl border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none transition focus:border-indigo-500"
+            className="flex-1 rounded-xl border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none transition focus:border-coral-500"
           />
           <button
             onClick={handleSend}
             disabled={isStreaming || !input.trim()}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white transition hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-coral-600 text-white transition hover:bg-coral-500 disabled:opacity-50 disabled:hover:bg-coral-600"
           >
             {isStreaming ? (
               <Loader2 className="h-4 w-4 animate-spin" />

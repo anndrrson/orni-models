@@ -9,14 +9,18 @@ use crate::error::{AppError, AppResult};
 use crate::services::inference::InferenceService;
 use crate::state::AppState;
 use orni_models_types::{
-    ContentSource, CreatorModelDetail, CreatorStats, FineTuneJob, Model, ModelStatus,
+    ContentSource, CreatorModelDetail, CreatorStats, DailyEarning, EarningsResponse,
+    FineTuneJob, Model, ModelEarning, ModelStatus, StatusToggleRequest,
 };
 
 pub async fn get_stats(
     State(state): State<Arc<AppState>>,
     claims: axum::Extension<Claims>,
 ) -> AppResult<Json<CreatorStats>> {
-    let user_id: Uuid = claims.sub.parse().map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
+    let user_id: Uuid = claims
+        .sub
+        .parse()
+        .map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
 
     let stats = sqlx::query_as::<_, CreatorStats>(
         r#"
@@ -39,7 +43,10 @@ pub async fn get_models(
     State(state): State<Arc<AppState>>,
     claims: axum::Extension<Claims>,
 ) -> AppResult<Json<Vec<Model>>> {
-    let user_id: Uuid = claims.sub.parse().map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
+    let user_id: Uuid = claims
+        .sub
+        .parse()
+        .map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
 
     let models = sqlx::query_as::<_, Model>(
         "SELECT * FROM models WHERE creator_id = $1 ORDER BY created_at DESC",
@@ -56,7 +63,10 @@ pub async fn get_model_detail(
     claims: axum::Extension<Claims>,
     Path(id): Path<Uuid>,
 ) -> AppResult<Json<CreatorModelDetail>> {
-    let user_id: Uuid = claims.sub.parse().map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
+    let user_id: Uuid = claims
+        .sub
+        .parse()
+        .map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
 
     let model = sqlx::query_as::<_, Model>(
         "SELECT * FROM models WHERE id = $1 AND creator_id = $2",
@@ -109,7 +119,10 @@ pub async fn start_fine_tune(
     claims: axum::Extension<Claims>,
     Path(model_id): Path<Uuid>,
 ) -> AppResult<Json<FineTuneJob>> {
-    let user_id: Uuid = claims.sub.parse().map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
+    let user_id: Uuid = claims
+        .sub
+        .parse()
+        .map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
 
     let model = sqlx::query_as::<_, Model>(
         "SELECT * FROM models WHERE id = $1 AND creator_id = $2",
@@ -127,7 +140,9 @@ pub async fn start_fine_tune(
     .bind(model_id)
     .fetch_optional(&state.db)
     .await?
-    .ok_or_else(|| AppError::BadRequest("No training dataset available. Add content first.".into()))?;
+    .ok_or_else(|| {
+        AppError::BadRequest("No training dataset available. Add content first.".into())
+    })?;
 
     // Submit to Together.ai
     let inference = InferenceService::new(&state.config, &state.http_client);
@@ -159,12 +174,16 @@ pub async fn start_fine_tune(
     Ok(Json(job))
 }
 
+/// POST /api/creator/models/{id}/publish — Simple status toggle to 'live'
 pub async fn publish_model(
     State(state): State<Arc<AppState>>,
     claims: axum::Extension<Claims>,
     Path(model_id): Path<Uuid>,
 ) -> AppResult<Json<Model>> {
-    let user_id: Uuid = claims.sub.parse().map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
+    let user_id: Uuid = claims
+        .sub
+        .parse()
+        .map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
 
     let model = sqlx::query_as::<_, Model>(
         "SELECT * FROM models WHERE id = $1 AND creator_id = $2",
@@ -175,9 +194,14 @@ pub async fn publish_model(
     .await?
     .ok_or_else(|| AppError::NotFound("Model not found".into()))?;
 
-    // Must have a provider model ID (completed fine-tune)
+    // Ensure provider_model_id is set — if not, default to base_model
     if model.provider_model_id.is_none() {
-        return Err(AppError::BadRequest("Model training not complete".into()));
+        sqlx::query(
+            "UPDATE models SET provider_model_id = base_model WHERE id = $1",
+        )
+        .bind(model_id)
+        .execute(&state.db)
+        .await?;
     }
 
     let updated = sqlx::query_as::<_, Model>(
@@ -188,4 +212,99 @@ pub async fn publish_model(
     .await?;
 
     Ok(Json(updated))
+}
+
+/// PUT /api/creator/models/{id}/status — Toggle model status (live/paused)
+pub async fn toggle_status(
+    State(state): State<Arc<AppState>>,
+    claims: axum::Extension<Claims>,
+    Path(model_id): Path<Uuid>,
+    Json(req): Json<StatusToggleRequest>,
+) -> AppResult<Json<Model>> {
+    let user_id: Uuid = claims
+        .sub
+        .parse()
+        .map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
+
+    // Verify ownership
+    let _model = sqlx::query_as::<_, Model>(
+        "SELECT * FROM models WHERE id = $1 AND creator_id = $2",
+    )
+    .bind(model_id)
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Model not found".into()))?;
+
+    // Only allow toggling to live or paused
+    match req.status {
+        ModelStatus::Live | ModelStatus::Paused => {}
+        _ => {
+            return Err(AppError::BadRequest(
+                "Can only toggle between live and paused".into(),
+            ));
+        }
+    }
+
+    let updated = sqlx::query_as::<_, Model>(
+        "UPDATE models SET status = $2, updated_at = NOW() WHERE id = $1 RETURNING *",
+    )
+    .bind(model_id)
+    .bind(&req.status)
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(updated))
+}
+
+/// GET /api/creator/earnings — Daily earnings + per-model breakdown
+pub async fn get_earnings(
+    State(state): State<Arc<AppState>>,
+    claims: axum::Extension<Claims>,
+) -> AppResult<Json<EarningsResponse>> {
+    let user_id: Uuid = claims
+        .sub
+        .parse()
+        .map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
+
+    let daily = sqlx::query_as::<_, DailyEarning>(
+        r#"
+        SELECT p.created_at::date as date, COALESCE(SUM(p.creator_share), 0) as amount
+        FROM payments p
+        JOIN models m ON m.id = p.model_id
+        WHERE m.creator_id = $1 AND p.created_at > NOW() - INTERVAL '30 days'
+        GROUP BY p.created_at::date
+        ORDER BY date ASC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.db)
+    .await?;
+
+    let per_model = sqlx::query_as::<_, ModelEarning>(
+        r#"
+        SELECT m.id as model_id, m.name as model_name, m.slug as model_slug,
+               m.total_revenue,
+               COALESCE(SUM(p.creator_share), 0) as creator_earnings,
+               COUNT(p.id) as query_count
+        FROM models m
+        LEFT JOIN payments p ON p.model_id = m.id
+        WHERE m.creator_id = $1
+        GROUP BY m.id, m.name, m.slug, m.total_revenue
+        ORDER BY creator_earnings DESC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.db)
+    .await?;
+
+    let total_earnings: i64 = per_model.iter().map(|m| m.creator_earnings).sum();
+    let total_revenue: i64 = per_model.iter().map(|m| m.total_revenue).sum();
+
+    Ok(Json(EarningsResponse {
+        daily,
+        per_model,
+        total_earnings,
+        total_revenue,
+    }))
 }

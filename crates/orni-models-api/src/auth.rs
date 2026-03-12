@@ -18,8 +18,8 @@ const JWT_EXPIRY: u64 = 86400; // 24 hours
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,      // user id
-    pub wallet: String,   // wallet address
+    pub sub: String,           // user id
+    pub wallet: Option<String>, // wallet address (None for email users)
     pub exp: u64,
     pub iat: u64,
 }
@@ -87,11 +87,11 @@ pub fn verify_siws(wallet_address: &str, message: &[u8], signature_b64: &str) ->
         .map_err(|_| AppError::Unauthorized("Signature verification failed".into()))
 }
 
-pub fn issue_jwt(user_id: &Uuid, wallet: &str, secret: &str) -> AppResult<String> {
+pub fn issue_jwt(user_id: &Uuid, wallet: Option<&str>, secret: &str) -> AppResult<String> {
     let now = chrono::Utc::now().timestamp() as u64;
     let claims = Claims {
         sub: user_id.to_string(),
-        wallet: wallet.to_string(),
+        wallet: wallet.map(|w| w.to_string()),
         exp: now + JWT_EXPIRY,
         iat: now,
     };
