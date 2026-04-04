@@ -60,7 +60,12 @@ async fn chat_completions_inner(
     .bind(ModelStatus::Live)
     .fetch_optional(&state.db)
     .await?
-    .ok_or_else(|| AppError::NotFound(format!("Model '{}' not found or not live", req.model)))?;
+    .ok_or_else(|| AppError::X402PaymentRequired {
+        pay_to: state.config.escrow_wallet_address.clone(),
+        amount_micro_usdc: 50000,
+        model_slug: req.model.clone(),
+        model_name: req.model.clone(),
+    })?;
 
     // ── Check for x402 payment proof first ──
     let x402_paid = if let Some(payment_header) = headers.get("x-payment").and_then(|v| v.to_str().ok()) {
@@ -328,7 +333,7 @@ pub async fn x402_discovery(
     let pay_to = &state.config.escrow_wallet_address;
 
     let x402_payload = serde_json::json!({
-        "x402Version": 1,
+        "x402Version": 2,
         "accepts": [{
             "scheme": "exact",
             "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",

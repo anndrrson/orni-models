@@ -66,7 +66,7 @@ impl IntoResponse for AppError {
             } => {
                 // Build x402-compliant payment-required header
                 let x402_payload = json!({
-                    "x402Version": 1,
+                    "x402Version": 2,
                     "accepts": [{
                         "scheme": "exact",
                         "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
