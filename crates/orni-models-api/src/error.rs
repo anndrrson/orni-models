@@ -19,6 +19,9 @@ pub enum AppError {
     #[error("Insufficient balance")]
     InsufficientBalance,
 
+    #[error("Too many requests")]
+    TooManyRequests(u64),
+
     #[error("Internal error: {0}")]
     Internal(String),
 
@@ -38,6 +41,17 @@ impl IntoResponse for AppError {
             AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
             AppError::InsufficientBalance => {
                 (StatusCode::PAYMENT_REQUIRED, "Insufficient USDC balance".into())
+            }
+            AppError::TooManyRequests(retry_after) => {
+                let body = axum::Json(json!({
+                    "error": "Too many requests",
+                    "retry_after": retry_after
+                }));
+                return (
+                    StatusCode::TOO_MANY_REQUESTS,
+                    [("Retry-After", retry_after.to_string())],
+                    body,
+                ).into_response();
             }
             AppError::Internal(msg) => {
                 tracing::error!("Internal error: {msg}");

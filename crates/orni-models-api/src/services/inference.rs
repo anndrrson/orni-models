@@ -91,6 +91,7 @@ impl InferenceService {
     }
 
     /// Stream from a self-hosted OpenAI-compatible endpoint.
+    /// Validates the endpoint URL to prevent SSRF before making the request.
     pub async fn chat_stream_self_hosted(
         &self,
         endpoint_url: &str,
@@ -98,6 +99,17 @@ impl InferenceService {
         messages: Vec<InferenceChatMessage>,
         tx: mpsc::Sender<String>,
     ) -> AppResult<()> {
+        // SSRF protection: only allow HTTPS endpoints (and localhost for dev)
+        let url = endpoint_url.trim_end_matches('/');
+        if !url.starts_with("https://")
+            && !url.starts_with("http://localhost")
+            && !url.starts_with("http://127.0.0.1")
+        {
+            return Err(AppError::BadRequest(
+                "Self-hosted endpoint must use HTTPS".into(),
+            ));
+        }
+
         let request = InferenceRequest {
             model: model_id.to_string(),
             messages,
@@ -108,11 +120,9 @@ impl InferenceService {
 
         let response = self
             .client
-            .post(format!(
-                "{}/chat/completions",
-                endpoint_url.trim_end_matches('/')
-            ))
+            .post(format!("{url}/chat/completions"))
             .json(&request)
+            .timeout(std::time::Duration::from_secs(30))
             .send()
             .await?;
 

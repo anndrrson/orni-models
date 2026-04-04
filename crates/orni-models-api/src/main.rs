@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
+use axum::extract::DefaultBodyLimit;
+use axum::http::{HeaderName, Method};
 use axum::middleware;
 use axum::routing::{delete, get, post, put};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
@@ -32,33 +34,69 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::from_env();
 
+    // Fail fast if JWT secret is the dev default in production
+    if config.jwt_secret == "dev-secret-change-me" && config.bind_addr.contains("0.0.0.0") {
+        tracing::warn!("JWT_SECRET is the dev default — set a strong secret in production!");
+    }
+
     // Append search_path to DATABASE_URL so all connections use the orni schema
     let db_url = if config.database_url.contains('?') {
-        format!("{}&options=-csearch_path%3Dorni%2Cpublic", config.database_url)
+        format!(
+            "{}&options=-csearch_path%3Dorni%2Cpublic",
+            config.database_url
+        )
     } else {
-        format!("{}?options=-csearch_path%3Dorni%2Cpublic", config.database_url)
+        format!(
+            "{}?options=-csearch_path%3Dorni%2Cpublic",
+            config.database_url
+        )
     };
 
     let db = PgPoolOptions::new()
         .max_connections(4)
         .acquire_timeout(std::time::Duration::from_secs(5))
+        .idle_timeout(std::time::Duration::from_secs(300))
+        .max_lifetime(std::time::Duration::from_secs(1800))
         .connect(&db_url)
         .await?;
 
-    tracing::info!("Connected to database");
+    tracing::info!("Connected to database (pool: max 4 connections)");
 
-    // Run schema setup as raw SQL (not sqlx::migrate!) to avoid conflicts
-    // with said-cloud's migration tracker when sharing ghola-db-2.
     crate::schema::ensure_schema(&db).await?;
     tracing::info!("Schema ready");
+
+    // Build HTTP client with timeouts (prevents SSRF hangs)
+    let http_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .connect_timeout(std::time::Duration::from_secs(5))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()?;
 
     let state = Arc::new(AppState {
         db,
         config: config.clone(),
-        http_client: reqwest::Client::new(),
+        http_client,
         nonce_store: Arc::new(NonceStore::new()),
         guest_rate_limits: Arc::new(Default::default()),
+        auth_rate_limiter: Arc::new(state::AuthRateLimiter::new()),
     });
+
+    // CORS — locked to allowed origins only
+    let allowed_origins: Vec<_> = config
+        .frontend_url
+        .split(',')
+        .chain(std::iter::once("https://ghola.xyz"))
+        .filter_map(|s| s.trim().parse().ok())
+        .collect();
+
+    let cors = CorsLayer::new()
+        .allow_origin(AllowOrigin::list(allowed_origins))
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+        .allow_headers([
+            HeaderName::from_static("content-type"),
+            HeaderName::from_static("authorization"),
+        ])
+        .allow_credentials(true);
 
     // Public routes
     let public = Router::new()
@@ -73,7 +111,10 @@ async fn main() -> anyhow::Result<()> {
             "/creator/{did}/profile",
             get(routes::identity::get_creator_profile),
         )
-        .route("/creators/{slug}", get(routes::creators::get_creator_by_slug))
+        .route(
+            "/creators/{slug}",
+            get(routes::creators::get_creator_by_slug),
+        )
         .route("/auth/register", post(routes::auth::register_email))
         .route("/auth/login", post(routes::auth::login_email))
         .route("/payments/webhook", post(routes::payments::stripe_webhook));
@@ -110,7 +151,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/creator/earnings", get(routes::creator::get_earnings))
         // Models
         .route("/models/create", post(routes::models::create_model))
-        .route("/models/quick-list", post(routes::models::quick_list_model))
+        .route(
+            "/models/quick-list",
+            post(routes::models::quick_list_model),
+        )
         .route("/models/id/{id}", put(routes::models::update_model))
         .route(
             "/models/id/{id}/content",
@@ -152,7 +196,9 @@ async fn main() -> anyhow::Result<()> {
         .merge(root_routes)
         .nest("/api", public.merge(protected))
         .with_state(state)
-        .layer(CorsLayer::permissive())
+        // 256KB max request body
+        .layer(DefaultBodyLimit::max(256 * 1024))
+        .layer(cors)
         .layer(TraceLayer::new_for_http());
 
     let bind_addr = config.bind_addr.parse::<std::net::SocketAddr>()?;

@@ -73,6 +73,12 @@ pub async fn register_email(
         return Err(AppError::BadRequest("Password must be at least 8 characters".into()));
     }
 
+    // Rate limit: 5 registrations per email per hour
+    let rate_key = format!("register:{}", req.email.to_lowercase());
+    if let Err(retry_after) = state.auth_rate_limiter.check(&rate_key, 5, 3600) {
+        return Err(AppError::TooManyRequests(retry_after));
+    }
+
     // Hash password
     let salt = SaltString::generate(&mut OsRng);
     let hash = Argon2::default()
@@ -109,6 +115,12 @@ pub async fn login_email(
     Json(req): Json<orni_models_types::EmailLoginRequest>,
 ) -> AppResult<Json<AuthResponse>> {
     use argon2::{Argon2, PasswordHash, PasswordVerifier};
+
+    // Rate limit: 10 login attempts per email per 15 minutes
+    let rate_key = format!("login:{}", req.email.to_lowercase());
+    if let Err(retry_after) = state.auth_rate_limiter.check(&rate_key, 10, 900) {
+        return Err(AppError::TooManyRequests(retry_after));
+    }
 
     let user = sqlx::query_as::<_, User>(
         "SELECT * FROM users WHERE email = $1",
