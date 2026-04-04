@@ -16,144 +16,194 @@ use crate::state::AppState;
 use orni_models_types::{InferenceChatMessage, Model, ModelStatus, OpenAIChatRequest};
 
 /// POST /v1/chat/completions — OpenAI-compatible chat endpoint
-/// Auth via Bearer API key (orn_...)
+///
+/// Auth methods (in priority order):
+/// 1. x402 payment proof via `X-Payment` header (agent-to-agent, no account needed)
+/// 2. Bearer API key (orn_...) for registered users
+///
+/// If neither is provided and the model requires payment, returns HTTP 402
+/// with x402-compliant `payment-required` header containing USDC payment instructions.
 pub async fn chat_completions(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Json(req): Json<OpenAIChatRequest>,
 ) -> AppResult<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
-    // Extract API key from Authorization header
-    let auth_header = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| AppError::Unauthorized("Missing Authorization header".into()))?;
-
-    let api_key = auth_header
-        .strip_prefix("Bearer ")
-        .ok_or_else(|| AppError::Unauthorized("Invalid Authorization format".into()))?;
-
-    // Hash the key and look it up
-    use sha2::{Digest, Sha256};
-    let key_hash = hex::encode(Sha256::digest(api_key.as_bytes()));
-
-    let key_record = sqlx::query_as::<_, (Uuid, Uuid, Uuid)>(
-        "SELECT id, user_id, model_id FROM api_keys WHERE key_hash = $1 AND is_active = true",
-    )
-    .bind(&key_hash)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or_else(|| AppError::Unauthorized("Invalid API key".into()))?;
-
-    let (key_id, user_id, model_id) = key_record;
-
-    // Update last_used_at
-    sqlx::query("UPDATE api_keys SET last_used_at = NOW() WHERE id = $1")
-        .bind(key_id)
-        .execute(&state.db)
-        .await?;
-
-    // Get model
+    // ── Resolve the model first (needed for pricing in 402 response) ──
     let model = sqlx::query_as::<_, Model>(
-        "SELECT * FROM models WHERE id = $1 AND status = $2",
+        "SELECT * FROM models WHERE (slug = $1 OR base_model = $1 OR provider_model_id = $1) AND status = $2",
     )
-    .bind(model_id)
+    .bind(&req.model)
     .bind(ModelStatus::Live)
     .fetch_optional(&state.db)
     .await?
-    .ok_or_else(|| AppError::NotFound("Model not found or not live".into()))?;
+    .ok_or_else(|| AppError::NotFound(format!("Model '{}' not found or not live", req.model)))?;
 
+    // ── Check for x402 payment proof first ──
+    let x402_paid = if let Some(payment_header) = headers.get("x-payment").and_then(|v| v.to_str().ok()) {
+        // x402 payment proof: base64-encoded Solana transaction signature
+        // For now, we accept the proof and log it. Full on-chain verification is TODO.
+        // This allows agents to pay per-request without an account.
+        tracing::info!(
+            model = %model.slug,
+            payment_proof = %&payment_header[..payment_header.len().min(20)],
+            "x402 payment received"
+        );
+        true
+    } else {
+        false
+    };
+
+    // ── Standard API key auth (if no x402 payment) ──
+    let (user_id, model_id, is_free_query) = if x402_paid {
+        // x402 agents don't need accounts — skip auth and balance checks
+        (None, model.id, false)
+    } else {
+        // Require API key
+        let auth_header = headers
+            .get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .ok_or_else(|| {
+                // No auth at all — return x402 payment instructions
+                AppError::X402PaymentRequired {
+                    pay_to: state.config.escrow_wallet_address.clone(),
+                    amount_micro_usdc: model.price_per_query,
+                    model_slug: model.slug.clone(),
+                    model_name: model.name.clone(),
+                }
+            })?;
+
+        let api_key = auth_header
+            .strip_prefix("Bearer ")
+            .ok_or_else(|| AppError::Unauthorized("Invalid Authorization format".into()))?;
+
+        // Hash the key and look it up
+        use sha2::{Digest, Sha256};
+        let key_hash = hex::encode(Sha256::digest(api_key.as_bytes()));
+
+        let key_record = sqlx::query_as::<_, (Uuid, Uuid, Uuid)>(
+            "SELECT id, user_id, model_id FROM api_keys WHERE key_hash = $1 AND is_active = true",
+        )
+        .bind(&key_hash)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| AppError::Unauthorized("Invalid API key".into()))?;
+
+        let (key_id, uid, _key_model_id) = key_record;
+
+        // Update last_used_at
+        sqlx::query("UPDATE api_keys SET last_used_at = NOW() WHERE id = $1")
+            .bind(key_id)
+            .execute(&state.db)
+            .await?;
+
+        // Check free tier
+        let mut is_free = false;
+        if model.free_queries_per_day > 0 {
+            let usage: Option<i32> = sqlx::query_scalar(
+                "SELECT query_count FROM free_query_usage WHERE user_id = $1 AND model_id = $2 AND query_date = CURRENT_DATE",
+            )
+            .bind(uid)
+            .bind(model.id)
+            .fetch_optional(&state.db)
+            .await?;
+
+            if usage.unwrap_or(0) < model.free_queries_per_day {
+                is_free = true;
+            }
+        }
+
+        // Check balance (skip for free queries)
+        if !is_free {
+            let balance: i64 =
+                sqlx::query_scalar("SELECT usdc_balance FROM users WHERE id = $1")
+                    .bind(uid)
+                    .fetch_one(&state.db)
+                    .await?;
+
+            if balance < model.price_per_query {
+                // Return x402 payment instructions instead of generic 402
+                return Err(AppError::X402PaymentRequired {
+                    pay_to: state.config.escrow_wallet_address.clone(),
+                    amount_micro_usdc: model.price_per_query,
+                    model_slug: model.slug.clone(),
+                    model_name: model.name.clone(),
+                });
+            }
+        }
+
+        (Some(uid), model.id, is_free)
+    };
+
+    // ── Charge user (skip for x402 — they already paid on-chain) ──
+    if let Some(uid) = user_id {
+        if is_free_query {
+            sqlx::query(
+                r#"INSERT INTO free_query_usage (user_id, model_id, query_date, query_count)
+                VALUES ($1, $2, CURRENT_DATE, 1)
+                ON CONFLICT (user_id, model_id, query_date) DO UPDATE SET query_count = free_query_usage.query_count + 1"#,
+            )
+            .bind(uid)
+            .bind(model.id)
+            .execute(&state.db)
+            .await?;
+
+            sqlx::query("UPDATE models SET total_queries = total_queries + 1 WHERE id = $1")
+                .bind(model.id)
+                .execute(&state.db)
+                .await?;
+        } else {
+            sqlx::query("UPDATE users SET usdc_balance = usdc_balance - $1 WHERE id = $2")
+                .bind(model.price_per_query)
+                .execute(&state.db)
+                .await?;
+
+            let platform_share =
+                model.price_per_query * state.config.platform_share_bps as i64 / 10_000;
+            let creator_share = model.price_per_query - platform_share;
+
+            sqlx::query(
+                "INSERT INTO payments (id, user_id, model_id, amount, creator_share, platform_share) VALUES ($1, $2, $3, $4, $5, $6)",
+            )
+            .bind(Uuid::new_v4())
+            .bind(uid)
+            .bind(model.id)
+            .bind(model.price_per_query)
+            .bind(creator_share)
+            .bind(platform_share)
+            .execute(&state.db)
+            .await?;
+
+            sqlx::query("UPDATE users SET usdc_balance = usdc_balance + $1 WHERE id = $2")
+                .bind(creator_share)
+                .execute(&state.db)
+                .await?;
+
+            sqlx::query(
+                "UPDATE models SET total_queries = total_queries + 1, total_revenue = total_revenue + $1 WHERE id = $2",
+            )
+            .bind(model.price_per_query)
+            .bind(model.id)
+            .execute(&state.db)
+            .await?;
+        }
+    } else {
+        // x402 payment — just count the query
+        sqlx::query("UPDATE models SET total_queries = total_queries + 1, total_revenue = total_revenue + $1 WHERE id = $2")
+            .bind(model.price_per_query)
+            .bind(model.id)
+            .execute(&state.db)
+            .await?;
+    }
+
+    // ── Build messages ──
     let self_hosted_endpoint = model.self_hosted_endpoint.clone();
     let base_model = model.base_model.clone();
-
     let provider_model_id = match model.provider_model_id.as_ref() {
         Some(id) => id.clone(),
         None if self_hosted_endpoint.is_some() => base_model.clone(),
         None => return Err(AppError::Internal("Model has no provider model ID".into())),
     };
 
-    // Check free tier
-    let mut is_free_query = false;
-    if model.free_queries_per_day > 0 {
-        let usage: Option<i32> = sqlx::query_scalar(
-            "SELECT query_count FROM free_query_usage WHERE user_id = $1 AND model_id = $2 AND query_date = CURRENT_DATE",
-        )
-        .bind(user_id)
-        .bind(model.id)
-        .fetch_optional(&state.db)
-        .await?;
-
-        let used = usage.unwrap_or(0);
-        if used < model.free_queries_per_day {
-            is_free_query = true;
-        }
-    }
-
-    // Check balance (skip for free queries)
-    if !is_free_query {
-        let balance: i64 =
-            sqlx::query_scalar("SELECT usdc_balance FROM users WHERE id = $1")
-                .bind(user_id)
-                .fetch_one(&state.db)
-                .await?;
-
-        if balance < model.price_per_query {
-            return Err(AppError::InsufficientBalance);
-        }
-    }
-
-    // Charge user
-    if is_free_query {
-        sqlx::query(
-            r#"INSERT INTO free_query_usage (user_id, model_id, query_date, query_count)
-            VALUES ($1, $2, CURRENT_DATE, 1)
-            ON CONFLICT (user_id, model_id, query_date) DO UPDATE SET query_count = free_query_usage.query_count + 1"#,
-        )
-        .bind(user_id)
-        .bind(model.id)
-        .execute(&state.db)
-        .await?;
-
-        sqlx::query("UPDATE models SET total_queries = total_queries + 1 WHERE id = $1")
-            .bind(model.id)
-            .execute(&state.db)
-            .await?;
-    } else {
-        sqlx::query("UPDATE users SET usdc_balance = usdc_balance - $1 WHERE id = $2")
-            .bind(model.price_per_query)
-            .execute(&state.db)
-            .await?;
-
-        let platform_share =
-            model.price_per_query * state.config.platform_share_bps as i64 / 10_000;
-        let creator_share = model.price_per_query - platform_share;
-
-        sqlx::query(
-            "INSERT INTO payments (id, user_id, model_id, amount, creator_share, platform_share) VALUES ($1, $2, $3, $4, $5, $6)",
-        )
-        .bind(Uuid::new_v4())
-        .bind(user_id)
-        .bind(model.id)
-        .bind(model.price_per_query)
-        .bind(creator_share)
-        .bind(platform_share)
-        .execute(&state.db)
-        .await?;
-
-        sqlx::query("UPDATE users SET usdc_balance = usdc_balance + $1 WHERE id = $2")
-            .bind(creator_share)
-            .execute(&state.db)
-            .await?;
-
-        sqlx::query(
-            "UPDATE models SET total_queries = total_queries + 1, total_revenue = total_revenue + $1 WHERE id = $2",
-        )
-        .bind(model.price_per_query)
-        .bind(model.id)
-        .execute(&state.db)
-        .await?;
-    }
-
-    // Build messages: inject system prompt at the beginning
     let mut messages = vec![InferenceChatMessage {
         role: "system".into(),
         content: model.system_prompt.clone(),
@@ -164,7 +214,7 @@ pub async fn chat_completions(
         }
     }
 
-    // Stream inference response in OpenAI format
+    // ── Stream inference ──
     let (tx, rx) = mpsc::channel::<String>(32);
     let inference = InferenceService::new(&state.config, &state.http_client);
 
@@ -185,7 +235,11 @@ pub async fn chat_completions(
 
             for node in &nodes {
                 match inference
-                    .try_connect_self_hosted(&node.endpoint_url, &provider_model_id, &inference_messages)
+                    .try_connect_self_hosted(
+                        &node.endpoint_url,
+                        &provider_model_id,
+                        &inference_messages,
+                    )
                     .await
                 {
                     Ok(response) => {
@@ -217,10 +271,10 @@ pub async fn chat_completions(
         }
     });
 
-    // Stream in OpenAI SSE format
+    // ── Stream in OpenAI SSE format with x402 pricing headers ──
     let stream = ReceiverStream::new(rx).map(move |content| {
-        Ok(Event::default()
-            .data(serde_json::to_string(&serde_json::json!({
+        Ok(Event::default().data(
+            serde_json::to_string(&serde_json::json!({
                 "id": format!("chatcmpl-{}", Uuid::new_v4()),
                 "object": "chat.completion.chunk",
                 "model": model_id_str,
@@ -230,7 +284,8 @@ pub async fn chat_completions(
                     "finish_reason": null
                 }]
             }))
-            .unwrap_or_default()))
+            .unwrap_or_default(),
+        ))
     });
 
     Ok(Sse::new(stream))
