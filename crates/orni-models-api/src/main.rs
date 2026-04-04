@@ -12,6 +12,7 @@ mod auth;
 mod config;
 mod error;
 mod routes;
+mod schema;
 mod services;
 mod state;
 
@@ -31,15 +32,25 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::from_env();
 
+    // Append search_path to DATABASE_URL so all connections use the orni schema
+    let db_url = if config.database_url.contains('?') {
+        format!("{}&options=-csearch_path%3Dorni%2Cpublic", config.database_url)
+    } else {
+        format!("{}?options=-csearch_path%3Dorni%2Cpublic", config.database_url)
+    };
+
     let db = PgPoolOptions::new()
-        .max_connections(20)
-        .connect(&config.database_url)
+        .max_connections(4)
+        .acquire_timeout(std::time::Duration::from_secs(5))
+        .connect(&db_url)
         .await?;
 
     tracing::info!("Connected to database");
 
-    sqlx::migrate!("../../migrations").run(&db).await?;
-    tracing::info!("Migrations applied");
+    // Run schema setup as raw SQL (not sqlx::migrate!) to avoid conflicts
+    // with said-cloud's migration tracker when sharing ghola-db-2.
+    crate::schema::ensure_schema(&db).await?;
+    tracing::info!("Schema ready");
 
     let state = Arc::new(AppState {
         db,
