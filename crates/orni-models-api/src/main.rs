@@ -188,6 +188,10 @@ async fn main() -> anyhow::Result<()> {
             get(routes::discovery::well_known_said),
         )
         .route(
+            "/.well-known/x402",
+            get(routes::discovery::well_known_x402),
+        )
+        .route(
             "/v1/chat/completions",
             post(routes::openai_compat::chat_completions)
                 .get(routes::openai_compat::x402_discovery),

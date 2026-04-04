@@ -110,3 +110,15 @@ pub async fn well_known_said(
         "services": services,
     })))
 }
+
+/// GET /.well-known/x402 — x402 discovery endpoint
+/// Lists all payable routes for x402scan registration.
+pub async fn well_known_x402() -> axum::Json<serde_json::Value> {
+    axum::Json(serde_json::json!({
+        "version": 1,
+        "resources": [
+            "POST /v1/chat/completions",
+            "GET /v1/chat/completions"
+        ]
+    }))
+}
