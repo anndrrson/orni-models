@@ -427,7 +427,7 @@ pub async fn quick_list_model(
                            provider_model_id, status, price_per_query, category, tags,
                            self_hosted_endpoint, free_queries_per_day)
         VALUES ($1, $2, $3, $4, $5, 'You are a helpful assistant.', $6, $7, 'live', 100000,
-                'Technology', '{}', $8, 5)
+                'Technology', '{}', $8, 20)
         RETURNING *
         "#,
     )
