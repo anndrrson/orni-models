@@ -111,14 +111,83 @@ pub async fn well_known_said(
     })))
 }
 
+/// GET /openapi.json — Minimal OpenAPI spec for x402 agent discovery
+pub async fn openapi_json(
+    State(state): State<Arc<AppState>>,
+) -> axum::Json<serde_json::Value> {
+    let pay_to = &state.config.escrow_wallet_address;
+    axum::Json(serde_json::json!({
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Ghola AI Inference API",
+            "version": "1.0.0",
+            "description": "Chat with any open-source AI model. Pay per request via x402.",
+            "x-guidance": "Send a POST to /v1/chat/completions with a model name and messages array. Without payment, you get a 402 with USDC payment instructions on Solana."
+        },
+        "servers": [{"url": "https://orni-models-api.onrender.com"}],
+        "paths": {
+            "/v1/chat/completions": {
+                "post": {
+                    "summary": "Chat completion (OpenAI-compatible)",
+                    "x-payment-info": {
+                        "price": {"mode": "fixed", "currency": "USDC", "amount": "0.05"},
+                        "protocols": [{"x402": {}}]
+                    },
+                    "requestBody": {
+                        "required": true,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["model", "messages"],
+                                    "properties": {
+                                        "model": {"type": "string", "description": "Model slug (e.g. llama-3-8b, qwen-32b, deepseek-r1-120b)"},
+                                        "messages": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "role": {"type": "string", "enum": ["system", "user", "assistant"]},
+                                                    "content": {"type": "string"}
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {"description": "SSE stream of chat completion chunks"},
+                        "402": {"description": "Payment Required — x402 payment instructions in header"}
+                    }
+                }
+            }
+        }
+    }))
+}
+
 /// GET /.well-known/x402 — x402 discovery endpoint
-/// Lists all payable routes for x402scan registration.
-pub async fn well_known_x402() -> axum::Json<serde_json::Value> {
+/// Lists all payable routes with pricing info for x402scan registration.
+pub async fn well_known_x402(
+    State(state): State<Arc<AppState>>,
+) -> axum::Json<serde_json::Value> {
+    let pay_to = &state.config.escrow_wallet_address;
     axum::Json(serde_json::json!({
         "version": 1,
         "resources": [
             "POST /v1/chat/completions",
             "GET /v1/chat/completions"
-        ]
+        ],
+        "x-payment-info": {
+            "price": {
+                "mode": "fixed",
+                "currency": "USDC",
+                "amount": "0.05"
+            },
+            "protocols": [{ "x402": {} }],
+            "payTo": pay_to,
+            "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+        }
     }))
 }

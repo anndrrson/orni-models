@@ -191,6 +191,7 @@ async fn main() -> anyhow::Result<()> {
             "/.well-known/x402",
             get(routes::discovery::well_known_x402),
         )
+        .route("/openapi.json", get(routes::discovery::openapi_json))
         .route(
             "/v1/chat/completions",
             post(routes::openai_compat::chat_completions)
