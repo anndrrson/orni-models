@@ -290,3 +290,65 @@ pub async fn chat_completions(
 
     Ok(Sse::new(stream))
 }
+
+/// GET /v1/chat/completions — x402 discovery endpoint
+///
+/// Returns HTTP 402 with payment-required header so x402scan and other
+/// discovery services can index this endpoint as an x402-compatible resource.
+pub async fn x402_discovery(
+    State(state): State<Arc<AppState>>,
+) -> Response {
+    use axum::response::IntoResponse;
+    use base64::{engine::general_purpose::STANDARD, Engine};
+
+    let pay_to = &state.config.escrow_wallet_address;
+
+    let x402_payload = serde_json::json!({
+        "x402Version": 1,
+        "accepts": [{
+            "scheme": "exact",
+            "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+            "maxAmountRequired": "50000",
+            "payTo": pay_to,
+            "resource": "/v1/chat/completions",
+            "description": "AI model inference on ghola.xyz — chat with any open-source model",
+            "mimeType": "text/event-stream",
+            "extra": {
+                "currency": "USDC",
+                "platform": "ghola.xyz",
+                "models": ["llama-3-8b", "llama-3-70b", "qwen-32b", "deepseek-r1-120b", "kimi-k2"],
+                "priceRange": {"min": 50000, "max": 200000},
+            }
+        }]
+    });
+
+    let encoded = STANDARD.encode(serde_json::to_vec(&x402_payload).unwrap_or_default());
+
+    let body = axum::Json(serde_json::json!({
+        "error": "Payment required",
+        "description": "AI inference endpoint — use POST with x402 payment or API key",
+        "x402": {
+            "version": 1,
+            "payTo": pay_to,
+            "currency": "USDC",
+            "network": "solana",
+            "models_available": 10,
+            "docs": "https://ghola.xyz/models",
+        }
+    }));
+
+    (
+        StatusCode::PAYMENT_REQUIRED,
+        [
+            ("payment-required", encoded.as_str()),
+            ("x-price-micro-usdc", "50000"),
+            ("x-currency", "USDC"),
+            ("x-payment-address", pay_to.as_str()),
+        ],
+        body,
+    )
+        .into_response()
+}
+
+use axum::response::Response;
+use axum::http::StatusCode;

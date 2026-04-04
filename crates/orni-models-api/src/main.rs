@@ -189,7 +189,8 @@ async fn main() -> anyhow::Result<()> {
         )
         .route(
             "/v1/chat/completions",
-            post(routes::openai_compat::chat_completions),
+            post(routes::openai_compat::chat_completions)
+                .get(routes::openai_compat::x402_discovery),
         );
 
     let app = Router::new()
