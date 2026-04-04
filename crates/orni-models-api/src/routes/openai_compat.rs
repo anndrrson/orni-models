@@ -324,18 +324,8 @@ pub async fn x402_discovery(
 
     let encoded = STANDARD.encode(serde_json::to_vec(&x402_payload).unwrap_or_default());
 
-    let body = axum::Json(serde_json::json!({
-        "error": "Payment required",
-        "description": "AI inference endpoint — use POST with x402 payment or API key",
-        "x402": {
-            "version": 1,
-            "payTo": pay_to,
-            "currency": "USDC",
-            "network": "solana",
-            "models_available": 10,
-            "docs": "https://ghola.xyz/models",
-        }
-    }));
+    // Body must be the x402 payload itself for v1 compatibility
+    let body = axum::Json(x402_payload.clone());
 
     (
         StatusCode::PAYMENT_REQUIRED,

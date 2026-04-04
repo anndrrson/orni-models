@@ -86,17 +86,8 @@ impl IntoResponse for AppError {
 
                 let encoded = STANDARD.encode(serde_json::to_vec(&x402_payload).unwrap_or_default());
 
-                let body = axum::Json(json!({
-                    "error": "Payment required",
-                    "x402": {
-                        "version": 1,
-                        "payTo": pay_to,
-                        "amount": amount_micro_usdc,
-                        "currency": "USDC",
-                        "network": "solana",
-                        "model": model_slug,
-                    }
-                }));
+                // Body must be the full x402 payload for v1 compatibility
+                let body = axum::Json(x402_payload);
 
                 return (
                     StatusCode::PAYMENT_REQUIRED,
