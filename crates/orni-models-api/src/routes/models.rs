@@ -55,8 +55,8 @@ pub async fn create_model(
     // This makes the model instantly usable (one-click publish)
     let model = sqlx::query_as::<_, Model>(
         r#"
-        INSERT INTO models (id, creator_id, slug, name, description, system_prompt, base_model, provider_model_id, status, price_per_query, category, tags)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'live', $9, $10, $11)
+        INSERT INTO models (id, creator_id, slug, name, description, system_prompt, base_model, provider_model_id, status, price_per_query, category, tags, self_hosted_endpoint)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'live', $9, $10, $11, $12)
         RETURNING *
         "#,
     )
@@ -71,6 +71,7 @@ pub async fn create_model(
     .bind(price)
     .bind(&req.category)
     .bind(&tags)
+    .bind(&req.self_hosted_endpoint)
     .fetch_one(&state.db)
     .await
     .map_err(|e| {

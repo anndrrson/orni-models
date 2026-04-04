@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Orni Models - AI Model Marketplace",
+  title: "kinakuta - AI Model Marketplace",
   description: "AI models by your favorite creators",
 };
 
@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-950 text-gray-50 antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-[#0a0a0a] text-[#fafafa] antialiased`}
       >
         <AppWalletProvider>
           <Navbar />

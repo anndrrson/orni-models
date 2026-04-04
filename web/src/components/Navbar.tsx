@@ -6,7 +6,8 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useAuth } from "@/lib/wallet-provider";
 import { useEffect, useState } from "react";
 import { getBalance } from "@/lib/api";
-import { Bot, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import KinakutaLogo from "@/components/KinakutaLogo";
 
 export default function Navbar() {
   const { connected } = useWallet();
@@ -25,26 +26,26 @@ export default function Navbar() {
   }, [authenticated]);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-gray-800 bg-gray-950/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 border-b border-[#262626] bg-[#0a0a0a]/80 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 text-lg font-bold">
-            <Bot className="h-6 w-6 text-coral-400" />
-            <span className="bg-gradient-to-r from-coral-400 to-purple-400 bg-clip-text text-transparent">
+          <Link href="/" className="flex items-center gap-2.5 text-lg font-medium">
+            <KinakutaLogo size={28} className="text-[#fafafa]" />
+            <span className="text-[#fafafa] font-medium">
               kinakuta
             </span>
           </Link>
           <div className="hidden items-center gap-6 md:flex">
             <Link
               href="/models"
-              className="text-sm text-gray-400 transition hover:text-white"
+              className="text-sm text-[#a1a1a1] transition-colors hover:text-[#fafafa]"
             >
               Browse
             </Link>
             {isCreator && (
               <Link
                 href="/creator"
-                className="text-sm text-gray-400 transition hover:text-white"
+                className="text-sm text-[#a1a1a1] transition-colors hover:text-[#fafafa]"
               >
                 Creator
               </Link>
@@ -55,7 +56,7 @@ export default function Navbar() {
           {authenticated && balance !== null && (
             <Link
               href="/account"
-              className="rounded-lg bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-300 transition hover:bg-gray-700"
+              className="rounded-lg bg-[#141414] border border-[#262626] px-3 py-1.5 text-sm font-mono font-medium text-[#00E5A0] transition-colors hover:border-[#333]"
             >
               ${balance.toFixed(2)}
             </Link>
@@ -63,25 +64,25 @@ export default function Navbar() {
           <WalletMultiButton />
         </div>
         <button
-          className="md:hidden text-gray-400"
+          className="md:hidden text-[#a1a1a1]"
           onClick={() => setMobileOpen(!mobileOpen)}
         >
           {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
       {mobileOpen && (
-        <div className="border-t border-gray-800 bg-gray-950 px-4 py-4 md:hidden">
+        <div className="border-t border-[#262626] bg-[#0a0a0a] px-4 py-4 md:hidden">
           <div className="flex flex-col gap-4">
-            <Link href="/models" className="text-sm text-gray-400" onClick={() => setMobileOpen(false)}>
+            <Link href="/models" className="text-sm text-[#a1a1a1]" onClick={() => setMobileOpen(false)}>
               Browse
             </Link>
             {isCreator && (
-              <Link href="/creator" className="text-sm text-gray-400" onClick={() => setMobileOpen(false)}>
+              <Link href="/creator" className="text-sm text-[#a1a1a1]" onClick={() => setMobileOpen(false)}>
                 Creator
               </Link>
             )}
             {authenticated && balance !== null && (
-              <Link href="/account" className="text-sm text-gray-400" onClick={() => setMobileOpen(false)}>
+              <Link href="/account" className="text-sm text-[#00E5A0] font-mono" onClick={() => setMobileOpen(false)}>
                 Balance: ${balance.toFixed(2)}
               </Link>
             )}

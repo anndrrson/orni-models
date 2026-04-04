@@ -227,6 +227,7 @@ pub struct CreateModelRequest {
     pub price_per_query: Option<i64>,
     pub category: Option<String>,
     pub tags: Option<Vec<String>>,
+    pub self_hosted_endpoint: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

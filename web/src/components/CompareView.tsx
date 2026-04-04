@@ -108,55 +108,55 @@ export default function CompareView({
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {/* Column A */}
-      <div className="flex flex-col rounded-xl border border-gray-800 bg-gray-900">
-        <div className="flex items-center gap-2 border-b border-gray-800 px-4 py-3">
-          <div className="h-2.5 w-2.5 rounded-full bg-coral-500" />
-          <h3 className="text-sm font-semibold text-white">{modelA.name}</h3>
+      <div className="flex flex-col bg-[#141414] border border-[#262626] rounded-lg">
+        <div className="flex items-center gap-2 border-b border-[#262626] px-4 py-3">
+          <div className="h-2.5 w-2.5 rounded-full bg-[#fafafa]" />
+          <h3 className="text-sm font-medium text-[#fafafa]">{modelA.name}</h3>
           {streamingA && (
-            <Loader2 className="ml-auto h-4 w-4 animate-spin text-coral-400" />
+            <Loader2 className="ml-auto h-4 w-4 animate-spin text-[#a1a1a1]" />
           )}
         </div>
         <div
           ref={colARef}
-          className="flex-1 overflow-y-auto p-4 text-sm text-gray-300 whitespace-pre-wrap min-h-[200px] max-h-[500px]"
+          className="flex-1 overflow-y-auto p-4 text-sm text-[#a1a1a1] whitespace-pre-wrap min-h-[200px] max-h-[500px]"
         >
           {responseA}
           {!responseA && streamingA && (
-            <span className="inline-flex gap-1 text-gray-500">
-              <span className="animate-pulse">.</span>
-              <span className="animate-pulse delay-100">.</span>
-              <span className="animate-pulse delay-200">.</span>
+            <span className="inline-flex gap-1.5">
+              <span className="streaming-dot" />
+              <span className="streaming-dot" />
+              <span className="streaming-dot" />
             </span>
           )}
           {errorA && (
-            <p className="text-red-400">Error: {errorA}</p>
+            <p className="text-[#ef4444]">Error: {errorA}</p>
           )}
         </div>
       </div>
 
       {/* Column B */}
-      <div className="flex flex-col rounded-xl border border-gray-800 bg-gray-900">
-        <div className="flex items-center gap-2 border-b border-gray-800 px-4 py-3">
-          <div className="h-2.5 w-2.5 rounded-full bg-purple-500" />
-          <h3 className="text-sm font-semibold text-white">{modelB.name}</h3>
+      <div className="flex flex-col bg-[#141414] border border-[#262626] rounded-lg">
+        <div className="flex items-center gap-2 border-b border-[#262626] px-4 py-3">
+          <div className="h-2.5 w-2.5 rounded-full bg-[#666]" />
+          <h3 className="text-sm font-medium text-[#fafafa]">{modelB.name}</h3>
           {streamingB && (
-            <Loader2 className="ml-auto h-4 w-4 animate-spin text-purple-400" />
+            <Loader2 className="ml-auto h-4 w-4 animate-spin text-[#a1a1a1]" />
           )}
         </div>
         <div
           ref={colBRef}
-          className="flex-1 overflow-y-auto p-4 text-sm text-gray-300 whitespace-pre-wrap min-h-[200px] max-h-[500px]"
+          className="flex-1 overflow-y-auto p-4 text-sm text-[#a1a1a1] whitespace-pre-wrap min-h-[200px] max-h-[500px]"
         >
           {responseB}
           {!responseB && streamingB && (
-            <span className="inline-flex gap-1 text-gray-500">
-              <span className="animate-pulse">.</span>
-              <span className="animate-pulse delay-100">.</span>
-              <span className="animate-pulse delay-200">.</span>
+            <span className="inline-flex gap-1.5">
+              <span className="streaming-dot" />
+              <span className="streaming-dot" />
+              <span className="streaming-dot" />
             </span>
           )}
           {errorB && (
-            <p className="text-red-400">Error: {errorB}</p>
+            <p className="text-[#ef4444]">Error: {errorB}</p>
           )}
         </div>
       </div>

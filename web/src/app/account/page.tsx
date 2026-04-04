@@ -117,26 +117,26 @@ export default function AccountPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-8">Account</h1>
+      <h1 className="text-3xl font-medium mb-8">Account</h1>
 
-      <div className="bg-gradient-to-br from-coral-500/20 to-purple-500/20 border border-coral-500/30 rounded-2xl p-8 mb-8">
+      <div className="bg-[#141414] border border-[#262626] rounded-xl p-8 mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <Wallet className="w-6 h-6 text-coral-400" />
-          <span className="text-gray-400 text-sm font-medium">USDC Balance</span>
-          <button onClick={fetchBalance} className="ml-auto text-gray-500 hover:text-white"><RefreshCw className="w-4 h-4" /></button>
+          <Wallet className="w-6 h-6 text-[#fafafa]" />
+          <span className="text-[#a1a1a1] text-sm font-medium">USDC Balance</span>
+          <button onClick={fetchBalance} className="ml-auto text-[#666] hover:text-[#fafafa] transition-colors"><RefreshCw className="w-4 h-4" /></button>
         </div>
-        <p className="text-5xl font-bold text-white mb-2">{balance ? formatUSDC(balance.balance) : '\u2014'}</p>
+        <p className="text-5xl font-medium text-[#00E5A0] font-mono mb-2">{balance ? formatUSDC(balance.balance) : '\u2014'}</p>
         {balance && balance.pending_earnings > 0 && (
-          <p className="text-sm text-coral-300">+{formatUSDC(balance.pending_earnings)} creator earnings</p>
+          <p className="text-sm text-[#00E5A0]/70">+{formatUSDC(balance.pending_earnings)} creator earnings</p>
         )}
       </div>
 
       {/* API Keys */}
-      <div className="bg-gray-900 rounded-xl p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Key className="w-5 h-5 text-purple-400" /> API Keys
+      <div className="bg-[#141414] border border-[#262626] rounded-lg p-6 mb-6">
+        <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
+          <Key className="w-5 h-5 text-[#fafafa]" /> API Keys
         </h2>
-        <p className="text-sm text-gray-400 mb-4">
+        <p className="text-sm text-[#a1a1a1] mb-4">
           Create API keys to access models via the OpenAI-compatible endpoint.
         </p>
 
@@ -145,7 +145,7 @@ export default function AccountPage() {
           <select
             value={newKeyModel}
             onChange={(e) => setNewKeyModel(e.target.value)}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none"
+            className="flex-1 bg-[#141414] border border-[#262626] rounded-lg px-3 py-2 text-sm text-[#fafafa] focus:border-[#444] focus:outline-none"
           >
             <option value="">Select a model...</option>
             {models.filter(m => m.status === 'live').map((m) => (
@@ -157,12 +157,12 @@ export default function AccountPage() {
             value={newKeyName}
             onChange={(e) => setNewKeyName(e.target.value)}
             placeholder="Key name (optional)"
-            className="w-40 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none"
+            className="w-40 bg-[#141414] border border-[#262626] rounded-lg px-3 py-2 text-sm text-[#fafafa] focus:border-[#444] focus:outline-none"
           />
           <button
             onClick={handleCreateKey}
             disabled={!newKeyModel || keyLoading}
-            className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg bg-[#fafafa] px-4 py-2 text-sm font-medium text-[#0a0a0a] hover:bg-[#e5e5e5] disabled:opacity-50 active:scale-[0.98] transition-colors"
           >
             <Plus className="w-4 h-4" /> Create
           </button>
@@ -170,18 +170,18 @@ export default function AccountPage() {
 
         {/* New key result */}
         {newKeyResult && (
-          <div className="mb-4 rounded-xl border border-green-500/30 bg-green-500/10 p-4">
-            <p className="text-xs text-green-300 mb-2">API key created. Copy it now — it won&apos;t be shown again:</p>
+          <div className="mb-4 rounded-lg border border-[#00E5A0]/20 bg-[#00E5A0]/10 p-4">
+            <p className="text-xs text-[#00E5A0] mb-2">API key created. Copy it now — it won&apos;t be shown again:</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 rounded-lg bg-gray-800 px-3 py-2 text-sm font-mono text-green-400 break-all">
+              <code className="flex-1 rounded-lg bg-[#111] px-3 py-2 text-sm font-mono text-[#00E5A0] break-all">
                 {newKeyResult}
               </code>
               <button
                 onClick={() => copyToClipboard(newKeyResult)}
-                className="rounded-lg bg-gray-700 p-2 hover:bg-gray-600"
+                className="rounded-lg bg-[#1a1a1a] p-2 hover:bg-[#222] transition-colors"
                 title="Copy"
               >
-                <Copy className="w-4 h-4 text-gray-300" />
+                <Copy className="w-4 h-4 text-[#a1a1a1]" />
               </button>
             </div>
           </div>
@@ -191,14 +191,14 @@ export default function AccountPage() {
         {apiKeys.length > 0 ? (
           <div className="space-y-2">
             {apiKeys.map((key) => (
-              <div key={key.id} className="flex items-center justify-between rounded-lg bg-gray-800 px-4 py-3">
+              <div key={key.id} className="flex items-center justify-between rounded-lg bg-[#1a1a1a] px-4 py-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <code className="text-sm font-mono text-gray-300">{key.key_prefix}...</code>
-                    {key.name && <span className="text-xs text-gray-500">{key.name}</span>}
-                    {!key.is_active && <span className="text-xs text-red-400">revoked</span>}
+                    <code className="text-sm font-mono text-[#a1a1a1]">{key.key_prefix}...</code>
+                    {key.name && <span className="text-xs text-[#666]">{key.name}</span>}
+                    {!key.is_active && <span className="text-xs text-[#ef4444]">revoked</span>}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-[#666] mt-0.5">
                     {key.model_name} &middot; Created {new Date(key.created_at).toLocaleDateString()}
                     {key.last_used_at && ` \u00b7 Last used ${new Date(key.last_used_at).toLocaleDateString()}`}
                   </p>
@@ -206,7 +206,7 @@ export default function AccountPage() {
                 {key.is_active && (
                   <button
                     onClick={() => handleRevokeKey(key.id)}
-                    className="rounded-lg p-2 text-gray-500 hover:bg-gray-700 hover:text-red-400"
+                    className="rounded-lg p-2 text-[#666] hover:bg-[#222] hover:text-[#ef4444] transition-colors"
                     title="Revoke key"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -216,15 +216,15 @@ export default function AccountPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-600">No API keys yet.</p>
+          <p className="text-sm text-[#666]">No API keys yet.</p>
         )}
       </div>
 
-      <div className="bg-gray-900 rounded-xl p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <CreditCard className="w-5 h-5 text-blue-400" /> Buy Credits with Card
+      <div className="bg-[#141414] border border-[#262626] rounded-lg p-6 mb-6">
+        <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
+          <CreditCard className="w-5 h-5 text-[#fafafa]" /> Buy Credits with Card
         </h2>
-        <p className="text-sm text-gray-400 mb-4">Purchase credits instantly with a credit or debit card.</p>
+        <p className="text-sm text-[#a1a1a1] mb-4">Purchase credits instantly with a credit or debit card.</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { pack: '5', label: '$5', credits: '5M' },
@@ -236,37 +236,37 @@ export default function AccountPage() {
               key={p.pack}
               onClick={() => handleCheckout(p.pack)}
               disabled={!!checkoutLoading}
-              className="flex flex-col items-center gap-1 rounded-xl border border-gray-700 bg-gray-800 p-4 transition hover:border-blue-500/50 hover:bg-gray-750 disabled:opacity-50"
+              className="flex flex-col items-center gap-1 rounded-lg border border-[#262626] bg-[#141414] p-4 transition-colors hover:border-[#333] disabled:opacity-50 active:scale-[0.98]"
             >
-              <span className="text-xl font-bold text-white">{p.label}</span>
-              <span className="text-xs text-gray-500">{p.credits} credits</span>
-              {checkoutLoading === p.pack && <span className="text-xs text-blue-400">Redirecting...</span>}
+              <span className="text-xl font-medium text-[#fafafa]">{p.label}</span>
+              <span className="text-xs text-[#666]">{p.credits} credits</span>
+              {checkoutLoading === p.pack && <span className="text-xs text-[#a1a1a1]">Redirecting...</span>}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="bg-gray-900 rounded-xl p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <ArrowDownToLine className="w-5 h-5 text-green-400" /> Deposit USDC
+      <div className="bg-[#141414] border border-[#262626] rounded-lg p-6 mb-6">
+        <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
+          <ArrowDownToLine className="w-5 h-5 text-[#00E5A0]" /> Deposit USDC
         </h2>
-        <p className="text-sm text-gray-400 mb-4">Send USDC to the platform escrow wallet on Solana, then paste the transaction signature below.</p>
+        <p className="text-sm text-[#a1a1a1] mb-4">Send USDC to the platform escrow wallet on Solana, then paste the transaction signature below.</p>
         <div className="space-y-3">
-          <input type="number" step="0.01" placeholder="Amount (USDC)" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none" />
-          <input type="text" placeholder="Transaction signature" value={depositTx} onChange={(e) => setDepositTx(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none font-mono text-sm" />
-          <button onClick={handleDeposit} disabled={loading || !depositTx || !depositAmount} className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl font-medium transition-colors">
+          <input type="number" step="0.01" placeholder="Amount (USDC)" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} className="w-full bg-[#141414] border border-[#262626] rounded-lg px-4 py-3 text-[#fafafa] focus:border-[#444] focus:outline-none" />
+          <input type="text" placeholder="Transaction signature" value={depositTx} onChange={(e) => setDepositTx(e.target.value)} className="w-full bg-[#141414] border border-[#262626] rounded-lg px-4 py-3 text-[#fafafa] focus:border-[#444] focus:outline-none font-mono text-sm" />
+          <button onClick={handleDeposit} disabled={loading || !depositTx || !depositAmount} className="w-full py-3 bg-[#00E5A0] hover:bg-[#00cc8e] disabled:opacity-50 text-[#0a0a0a] rounded-lg font-medium transition-colors active:scale-[0.98]">
             {loading ? 'Verifying...' : 'Verify Deposit'}
           </button>
         </div>
       </div>
 
-      <div className="bg-gray-900 rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <ArrowUpFromLine className="w-5 h-5 text-orange-400" /> Withdraw USDC
+      <div className="bg-[#141414] border border-[#262626] rounded-lg p-6">
+        <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
+          <ArrowUpFromLine className="w-5 h-5 text-[#a1a1a1]" /> Withdraw USDC
         </h2>
         <div className="space-y-3">
-          <input type="number" step="0.01" placeholder="Amount (USDC)" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none" />
-          <button onClick={handleWithdraw} disabled={loading || !withdrawAmount} className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl font-medium transition-colors">
+          <input type="number" step="0.01" placeholder="Amount (USDC)" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} className="w-full bg-[#141414] border border-[#262626] rounded-lg px-4 py-3 text-[#fafafa] focus:border-[#444] focus:outline-none" />
+          <button onClick={handleWithdraw} disabled={loading || !withdrawAmount} className="w-full py-3 border border-[#262626] hover:border-[#333] text-[#a1a1a1] hover:text-[#fafafa] disabled:opacity-50 rounded-lg font-medium transition-colors active:scale-[0.98]">
             {loading ? 'Processing...' : 'Withdraw'}
           </button>
         </div>

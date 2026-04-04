@@ -82,8 +82,8 @@ function ComparePageInner() {
     <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Compare Models</h1>
-        <p className="mt-2 text-sm text-gray-400">
+        <h1 className="text-3xl font-medium">Compare Models</h1>
+        <p className="mt-2 text-sm text-[#a1a1a1]">
           Send the same question to two models and see how they stack up side by side.
         </p>
       </div>
@@ -91,12 +91,12 @@ function ComparePageInner() {
       {/* Model Selectors */}
       <div className="mb-6 flex flex-col items-center gap-3 md:flex-row">
         <div className="flex-1 w-full">
-          <label className="mb-1.5 block text-xs font-medium text-gray-400">Model A</label>
+          <label className="mb-1.5 block text-xs font-medium text-[#a1a1a1]">Model A</label>
           <select
             value={slugA}
             onChange={(e) => setSlugA(e.target.value)}
             disabled={isStreaming}
-            className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-gray-200 outline-none transition focus:border-coral-500 disabled:opacity-50"
+            className="w-full rounded-lg bg-[#141414] border border-[#262626] px-4 py-2.5 text-sm text-[#a1a1a1] outline-none transition-colors focus:border-[#444] disabled:opacity-50"
           >
             <option value="">Select a model...</option>
             {models
@@ -112,19 +112,19 @@ function ComparePageInner() {
         <button
           onClick={handleSwap}
           disabled={isStreaming || !slugA || !slugB}
-          className="mt-5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-700 bg-gray-800 text-gray-400 transition hover:border-coral-500 hover:text-coral-400 disabled:opacity-30 disabled:hover:border-gray-700 disabled:hover:text-gray-400"
+          className="mt-5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#262626] bg-[#141414] text-[#a1a1a1] transition-colors hover:border-[#333] hover:text-[#fafafa] disabled:opacity-30 active:scale-[0.98]"
           title="Swap models"
         >
           <ArrowLeftRight className="h-4 w-4" />
         </button>
 
         <div className="flex-1 w-full">
-          <label className="mb-1.5 block text-xs font-medium text-gray-400">Model B</label>
+          <label className="mb-1.5 block text-xs font-medium text-[#a1a1a1]">Model B</label>
           <select
             value={slugB}
             onChange={(e) => setSlugB(e.target.value)}
             disabled={isStreaming}
-            className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-gray-200 outline-none transition focus:border-coral-500 disabled:opacity-50"
+            className="w-full rounded-lg bg-[#141414] border border-[#262626] px-4 py-2.5 text-sm text-[#a1a1a1] outline-none transition-colors focus:border-[#444] disabled:opacity-50"
           >
             <option value="">Select a model...</option>
             {models
@@ -141,16 +141,16 @@ function ComparePageInner() {
       {/* Loading state */}
       {loading && (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#666]" />
         </div>
       )}
 
       {/* Compare View */}
       {activeMessage && modelA && modelB && (
         <div className="mb-6">
-          <div className="mb-3 rounded-xl bg-gray-900 border border-gray-800 px-4 py-3">
-            <p className="text-xs font-medium text-gray-500 mb-1">Your question</p>
-            <p className="text-sm text-gray-200">{activeMessage}</p>
+          <div className="mb-3 bg-[#141414] border border-[#262626] rounded-lg px-4 py-3">
+            <p className="text-xs font-medium text-[#666] mb-1">Your question</p>
+            <p className="text-sm text-[#a1a1a1]">{activeMessage}</p>
           </div>
 
           <CompareView
@@ -163,14 +163,14 @@ function ComparePageInner() {
           {/* Vote Buttons */}
           {bothDone && (
             <div className="mt-4 flex flex-col items-center gap-3">
-              <p className="text-sm font-medium text-gray-400">Which response was better?</p>
+              <p className="text-sm font-medium text-[#a1a1a1]">Which response was better?</p>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setVote("a")}
-                  className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition ${
+                  className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors active:scale-[0.98] ${
                     vote === "a"
-                      ? "bg-coral-500 text-white"
-                      : "border border-gray-700 bg-gray-800 text-gray-300 hover:border-coral-500 hover:text-coral-400"
+                      ? "bg-[#fafafa] text-[#0a0a0a]"
+                      : "border border-[#262626] bg-[#141414] text-[#a1a1a1] hover:border-[#333] hover:text-[#fafafa]"
                   }`}
                 >
                   <ThumbsUp className="h-4 w-4" />
@@ -178,10 +178,10 @@ function ComparePageInner() {
                 </button>
                 <button
                   onClick={() => setVote("b")}
-                  className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition ${
+                  className={`flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors active:scale-[0.98] ${
                     vote === "b"
-                      ? "bg-purple-500 text-white"
-                      : "border border-gray-700 bg-gray-800 text-gray-300 hover:border-purple-500 hover:text-purple-400"
+                      ? "bg-[#fafafa] text-[#0a0a0a]"
+                      : "border border-[#262626] bg-[#141414] text-[#a1a1a1] hover:border-[#333] hover:text-[#fafafa]"
                   }`}
                 >
                   <ThumbsUp className="h-4 w-4" />
@@ -189,15 +189,15 @@ function ComparePageInner() {
                 </button>
                 <button
                   onClick={handleReset}
-                  className="flex items-center gap-2 rounded-xl border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-gray-400 transition hover:border-gray-600 hover:text-gray-300"
+                  className="flex items-center gap-2 rounded-lg border border-[#262626] bg-[#141414] px-4 py-2.5 text-sm text-[#a1a1a1] transition-colors hover:border-[#333] hover:text-[#fafafa] active:scale-[0.98]"
                 >
                   <RotateCcw className="h-4 w-4" />
                   Try again
                 </button>
               </div>
               {vote && (
-                <p className="text-xs text-gray-500 mt-1">
-                  You voted for <span className={vote === "a" ? "text-coral-400" : "text-purple-400"}>{vote === "a" ? modelA.name : modelB.name}</span>. Thanks for the feedback!
+                <p className="text-xs text-[#666] mt-1">
+                  You voted for <span className="text-[#fafafa]">{vote === "a" ? modelA.name : modelB.name}</span>. Thanks for the feedback!
                 </p>
               )}
             </div>
@@ -207,10 +207,10 @@ function ComparePageInner() {
 
       {/* Empty state */}
       {!activeMessage && !loading && (
-        <div className="mb-6 flex items-center justify-center rounded-xl border border-gray-800 bg-gray-900/50 py-20">
+        <div className="mb-6 flex items-center justify-center bg-[#141414] border border-[#262626] rounded-lg py-20">
           <div className="text-center">
-            <ArrowLeftRight className="mx-auto mb-3 h-8 w-8 text-gray-600" />
-            <p className="text-sm text-gray-500">
+            <ArrowLeftRight className="mx-auto mb-3 h-8 w-8 text-[#666]" />
+            <p className="text-sm text-[#666]">
               {canCompare
                 ? "Type a message below to compare both models"
                 : "Select two different models to get started"}
@@ -220,7 +220,7 @@ function ComparePageInner() {
       )}
 
       {/* Input Bar */}
-      <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+      <div className="bg-[#141414] border border-[#262626] rounded-lg p-4">
         <div className="flex gap-2">
           <input
             type="text"
@@ -233,12 +233,12 @@ function ComparePageInner() {
                 : "Select two models first..."
             }
             disabled={isStreaming || !canCompare}
-            className="flex-1 rounded-xl border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none transition focus:border-coral-500 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-[#0a0a0a] border border-[#262626] px-4 py-2.5 text-sm text-[#fafafa] placeholder-[#666] outline-none transition-colors focus:border-[#444] disabled:opacity-50"
           />
           <button
             onClick={handleSend}
             disabled={isStreaming || !input.trim() || !canCompare}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-coral-600 text-white transition hover:bg-coral-500 disabled:opacity-50 disabled:hover:bg-coral-600"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fafafa] text-[#0a0a0a] transition-colors hover:bg-[#e5e5e5] disabled:opacity-50 active:scale-[0.98]"
           >
             {isStreaming ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -257,7 +257,7 @@ export default function ComparePage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center py-32">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#666]" />
         </div>
       }
     >

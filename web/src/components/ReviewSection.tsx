@@ -61,13 +61,13 @@ export default function ReviewSection({ slug, authenticated }: ReviewSectionProp
   const activeRating = hoverRating || selectedRating;
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-      <h3 className="mb-4 text-lg font-semibold text-white">Reviews</h3>
+    <div className="bg-[#141414] border border-[#262626] rounded-lg p-6">
+      <h3 className="mb-4 text-lg font-medium text-[#fafafa]">Reviews</h3>
 
       {/* Submit form */}
       {authenticated && (
-        <div className="mb-6 rounded-lg border border-gray-800 bg-gray-950 p-4">
-          <p className="mb-3 text-sm font-medium text-gray-300">Rate this model</p>
+        <div className="mb-6 rounded-lg bg-[#1a1a1a] border border-[#262626] p-4">
+          <p className="mb-3 text-sm font-medium text-[#a1a1a1]">Rate this model</p>
 
           {/* Interactive star picker */}
           <div className="mb-3 flex items-center gap-1">
@@ -78,19 +78,19 @@ export default function ReviewSection({ slug, authenticated }: ReviewSectionProp
                 onMouseEnter={() => setHoverRating(star)}
                 onMouseLeave={() => setHoverRating(0)}
                 onClick={() => setSelectedRating(star)}
-                className="transition"
+                className="transition-colors"
               >
                 <Star
                   className={`h-6 w-6 ${
                     star <= activeRating
                       ? "text-yellow-400 fill-yellow-400"
-                      : "text-gray-600"
+                      : "text-[#666]"
                   }`}
                 />
               </button>
             ))}
             {activeRating > 0 && (
-              <span className="ml-2 text-sm text-gray-400">
+              <span className="ml-2 text-sm text-[#a1a1a1]">
                 {activeRating}/5
               </span>
             )}
@@ -102,7 +102,7 @@ export default function ReviewSection({ slug, authenticated }: ReviewSectionProp
             onChange={(e) => setReviewText(e.target.value)}
             placeholder="Share your experience (optional)"
             rows={3}
-            className="mb-3 w-full resize-none rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 outline-none transition focus:border-coral-500"
+            className="mb-3 w-full resize-none rounded-lg bg-[#141414] border border-[#262626] px-3 py-2 text-sm text-[#fafafa] placeholder-[#666] outline-none transition-colors focus:border-[#444]"
           />
 
           {/* Submit button */}
@@ -110,7 +110,7 @@ export default function ReviewSection({ slug, authenticated }: ReviewSectionProp
             <button
               onClick={handleSubmit}
               disabled={selectedRating === 0 || submitting}
-              className="flex items-center gap-2 rounded-lg bg-coral-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-coral-500 disabled:opacity-50 disabled:hover:bg-coral-600"
+              className="flex items-center gap-2 rounded-lg bg-[#fafafa] px-4 py-2 text-sm font-medium text-[#0a0a0a] transition-colors hover:bg-[#e5e5e5] disabled:opacity-50 active:scale-[0.98]"
             >
               {submitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -121,10 +121,10 @@ export default function ReviewSection({ slug, authenticated }: ReviewSectionProp
             </button>
 
             {submitError && (
-              <p className="text-sm text-red-400">{submitError}</p>
+              <p className="text-sm text-[#ef4444]">{submitError}</p>
             )}
             {submitSuccess && (
-              <p className="text-sm text-green-400">Review submitted!</p>
+              <p className="text-sm text-[#00E5A0]">Review submitted!</p>
             )}
           </div>
         </div>
@@ -133,12 +133,12 @@ export default function ReviewSection({ slug, authenticated }: ReviewSectionProp
       {/* Reviews list */}
       {loading && (
         <div className="flex items-center justify-center py-8">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-700 border-t-coral-400" />
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#262626] border-t-[#a1a1a1]" />
         </div>
       )}
 
       {!loading && reviews.length === 0 && (
-        <p className="py-6 text-center text-sm text-gray-600">
+        <p className="py-6 text-center text-sm text-[#666]">
           No reviews yet. Be the first to review this model.
         </p>
       )}
@@ -148,21 +148,21 @@ export default function ReviewSection({ slug, authenticated }: ReviewSectionProp
           {reviews.map((review) => (
             <div
               key={review.id}
-              className="border-b border-gray-800/50 pb-4 last:border-0 last:pb-0"
+              className="border-b border-[#1a1a1a] pb-4 last:border-0 last:pb-0"
             >
               <div className="mb-1.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-300">
+                  <span className="text-sm font-medium text-[#a1a1a1]">
                     {review.user_name || "Anonymous"}
                   </span>
                   <StarRating rating={review.rating} size="sm" />
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-[#666]">
                   {formatDate(review.created_at)}
                 </span>
               </div>
               {review.review_text && (
-                <p className="text-sm leading-relaxed text-gray-400">
+                <p className="text-sm leading-relaxed text-[#a1a1a1]">
                   {review.review_text}
                 </p>
               )}

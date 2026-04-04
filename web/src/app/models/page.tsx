@@ -69,12 +69,12 @@ export default function BrowsePage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="mb-6 text-3xl font-bold">Browse Models</h1>
+      <h1 className="mb-6 text-3xl font-medium text-[#fafafa]">Browse Models</h1>
 
       {/* Featured Models */}
       {featured.length > 0 && (
         <div className="mb-10">
-          <h2 className="mb-4 text-xl font-semibold text-coral-300">Featured Models</h2>
+          <h2 className="mb-4 text-xl font-medium text-[#fafafa]">Featured Models</h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {featured.map((m) => (
               <ModelCard key={m.id} model={m} />
@@ -86,13 +86,13 @@ export default function BrowsePage() {
       {/* Filters */}
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#666]" />
           <input
             type="text"
             placeholder="Search models..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-gray-700 bg-gray-900 py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none focus:border-coral-500"
+            className="w-full rounded-lg bg-[#141414] border border-[#262626] py-2.5 pl-10 pr-4 text-sm text-[#fafafa] placeholder-[#666] outline-none transition-colors focus:border-[#444]"
           />
         </div>
         <div className="flex gap-2 overflow-x-auto">
@@ -100,10 +100,10 @@ export default function BrowsePage() {
             <button
               key={cat}
               onClick={() => setCategory(cat)}
-              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors active:scale-[0.98] ${
                 category === cat
-                  ? "bg-coral-500 text-white"
-                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                  ? "bg-[#fafafa] text-[#0a0a0a]"
+                  : "bg-[#141414] text-[#a1a1a1] hover:text-[#fafafa] border border-[#262626] hover:border-[#333]"
               }`}
             >
               {cat}
@@ -113,7 +113,7 @@ export default function BrowsePage() {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="rounded-xl border border-gray-700 bg-gray-900 px-3 py-2.5 text-sm text-gray-300 outline-none focus:border-coral-500"
+          className="rounded-lg bg-[#141414] border border-[#262626] px-3 py-2.5 text-sm text-[#a1a1a1] outline-none transition-colors focus:border-[#444]"
         >
           {SORT_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -127,7 +127,7 @@ export default function BrowsePage() {
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-48 animate-pulse rounded-xl bg-gray-900" />
+            <div key={i} className="h-48 animate-pulse rounded-lg bg-[#141414]" />
           ))}
         </div>
       ) : models.length > 0 ? (
@@ -137,8 +137,8 @@ export default function BrowsePage() {
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-800 bg-gray-900/50 py-16 text-center">
-          <p className="text-gray-500">No models found</p>
+        <div className="rounded-lg bg-[#141414] border border-[#262626] py-16 text-center">
+          <p className="text-[#666]">No models found</p>
         </div>
       )}
 
@@ -148,17 +148,17 @@ export default function BrowsePage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:bg-gray-700 disabled:opacity-50"
+            className="rounded-lg bg-[#141414] border border-[#262626] p-2 text-[#a1a1a1] transition-colors hover:border-[#333] disabled:opacity-50 active:scale-[0.98]"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-[#a1a1a1]">
             Page {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="rounded-lg bg-gray-800 p-2 text-gray-400 transition hover:bg-gray-700 disabled:opacity-50"
+            className="rounded-lg bg-[#141414] border border-[#262626] p-2 text-[#a1a1a1] transition-colors hover:border-[#333] disabled:opacity-50 active:scale-[0.98]"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

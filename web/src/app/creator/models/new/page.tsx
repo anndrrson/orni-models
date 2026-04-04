@@ -66,8 +66,8 @@ export default function CreateModelPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-2">Create Your AI Model</h1>
-      <p className="text-gray-400 text-sm mb-8">Your model will be live immediately — just write a system prompt and go.</p>
+      <h1 className="text-3xl font-medium mb-2">Create Your AI Model</h1>
+      <p className="text-[#a1a1a1] text-sm mb-8">Your model will be live immediately — just write a system prompt and go.</p>
 
       <div className="flex items-center gap-2 mb-10">
         {STEPS.map((s, i) => (
@@ -75,12 +75,12 @@ export default function CreateModelPage() {
             <button
               onClick={() => i < step && setStep(i)}
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                i === step ? 'bg-coral-500 text-white' : i < step ? 'bg-coral-500/20 text-coral-400' : 'bg-gray-800 text-gray-500'
+                i === step ? 'bg-[#fafafa] text-[#0a0a0a]' : i < step ? 'bg-[#222] text-[#fafafa]' : 'bg-[#141414] text-[#666]'
               }`}
             >
               {i < step ? <Check className="w-4 h-4" /> : i + 1}
             </button>
-            {i < STEPS.length - 1 && <div className={`w-8 h-0.5 ${i < step ? 'bg-coral-500/50' : 'bg-gray-800'}`} />}
+            {i < STEPS.length - 1 && <div className={`w-8 h-0.5 ${i < step ? 'bg-[#333]' : 'bg-[#1a1a1a]'}`} />}
           </div>
         ))}
       </div>
@@ -88,23 +88,23 @@ export default function CreateModelPage() {
       {step === 0 && (
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Model Name</label>
-            <input type="text" value={form.name} onChange={(e) => updateField('name', e.target.value)} placeholder="e.g., Fitness Coach AI" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none" />
+            <label className="block text-sm font-medium text-[#a1a1a1] mb-2">Model Name</label>
+            <input type="text" value={form.name} onChange={(e) => updateField('name', e.target.value)} placeholder="e.g., Fitness Coach AI" className="w-full bg-[#141414] border border-[#262626] rounded-lg px-4 py-3 text-[#fafafa] focus:border-[#444] focus:outline-none" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">URL Slug</label>
-            <div className="flex items-center bg-gray-900 border border-gray-700 rounded-xl px-4 py-3">
-              <span className="text-gray-500">ai.useorni.xyz/models/</span>
-              <input type="text" value={form.slug} onChange={(e) => updateField('slug', e.target.value)} className="bg-transparent text-white flex-1 focus:outline-none" />
+            <label className="block text-sm font-medium text-[#a1a1a1] mb-2">URL Slug</label>
+            <div className="flex items-center bg-[#141414] border border-[#262626] rounded-lg px-4 py-3">
+              <span className="text-[#666]">kinakuta.xyz/models/</span>
+              <input type="text" value={form.slug} onChange={(e) => updateField('slug', e.target.value)} className="bg-transparent text-[#fafafa] flex-1 focus:outline-none" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
-            <textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} rows={3} placeholder="What makes your AI unique?" className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none resize-none" />
+            <label className="block text-sm font-medium text-[#a1a1a1] mb-2">Description</label>
+            <textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} rows={3} placeholder="What makes your AI unique?" className="w-full bg-[#141414] border border-[#262626] rounded-lg px-4 py-3 text-[#fafafa] focus:border-[#444] focus:outline-none resize-none" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Category</label>
-            <select value={form.category} onChange={(e) => updateField('category', e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none">
+            <label className="block text-sm font-medium text-[#a1a1a1] mb-2">Category</label>
+            <select value={form.category} onChange={(e) => updateField('category', e.target.value)} className="w-full bg-[#141414] border border-[#262626] rounded-lg px-4 py-3 text-[#fafafa] focus:border-[#444] focus:outline-none">
               <option value="">Select a category</option>
               <option value="fitness">Fitness & Health</option>
               <option value="finance">Finance & Investing</option>
@@ -116,20 +116,20 @@ export default function CreateModelPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Base Model</label>
+            <label className="block text-sm font-medium text-[#a1a1a1] mb-2">Base Model</label>
             <div className="space-y-2">
               {BASE_MODELS.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => updateField('base_model', m.id)}
-                  className={`w-full text-left rounded-xl border p-4 transition ${
+                  className={`w-full text-left rounded-lg border p-4 transition-colors ${
                     form.base_model === m.id
-                      ? 'border-coral-500 bg-coral-500/10'
-                      : 'border-gray-700 bg-gray-900 hover:border-gray-600'
+                      ? 'border-[#fafafa] bg-[#1a1a1a]'
+                      : 'border-[#262626] bg-[#141414] hover:border-[#333]'
                   }`}
                 >
-                  <p className="font-medium text-white">{m.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{m.desc}</p>
+                  <p className="font-medium text-[#fafafa]">{m.name}</p>
+                  <p className="text-xs text-[#a1a1a1] mt-0.5">{m.desc}</p>
                 </button>
               ))}
             </div>
@@ -139,52 +139,52 @@ export default function CreateModelPage() {
 
       {step === 1 && (
         <div className="space-y-4">
-          <div className="bg-coral-500/10 border border-coral-500/30 rounded-xl p-4 flex gap-3">
-            <Sparkles className="w-5 h-5 text-coral-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-coral-200">The system prompt defines your AI&apos;s personality. Write as if briefing someone to respond exactly like you. Your model goes live immediately!</p>
+          <div className="bg-[#141414] border border-[#262626] border-l-2 border-l-[#00E5A0] rounded-lg p-4 flex gap-3">
+            <Sparkles className="w-5 h-5 text-[#fafafa] flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-[#a1a1a1]">The system prompt defines your AI&apos;s personality. Write as if briefing someone to respond exactly like you. Your model goes live immediately!</p>
           </div>
-          <textarea value={form.system_prompt} onChange={(e) => updateField('system_prompt', e.target.value)} rows={12} placeholder="You are [Name], a [expertise]. You speak in a [tone] way..." className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-coral-500 focus:outline-none resize-none font-mono text-sm" />
-          <p className="text-sm text-gray-500">{form.system_prompt.length} characters</p>
+          <textarea value={form.system_prompt} onChange={(e) => updateField('system_prompt', e.target.value)} rows={12} placeholder="You are [Name], a [expertise]. You speak in a [tone] way..." className="w-full bg-[#141414] border border-[#262626] rounded-lg px-4 py-3 text-[#fafafa] focus:border-[#444] focus:outline-none resize-none font-mono text-sm" />
+          <p className="text-sm text-[#666]">{form.system_prompt.length} characters</p>
         </div>
       )}
 
       {step === 2 && (
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Price per message: {priceDisplay(form.price_per_query)}</label>
-            <input type="range" min={10000} max={1000000} step={10000} value={form.price_per_query} onChange={(e) => updateField('price_per_query', parseInt(e.target.value))} className="w-full accent-coral-500" />
-            <div className="flex justify-between text-sm text-gray-500 mt-1"><span>$0.01</span><span>$1.00</span></div>
+            <label className="block text-sm font-medium text-[#a1a1a1] mb-2">Price per message: {priceDisplay(form.price_per_query)}</label>
+            <input type="range" min={10000} max={1000000} step={10000} value={form.price_per_query} onChange={(e) => updateField('price_per_query', parseInt(e.target.value))} className="w-full accent-[#00E5A0]" />
+            <div className="flex justify-between text-sm text-[#666] mt-1"><span>$0.01</span><span>$1.00</span></div>
           </div>
-          <div className="bg-gray-900 rounded-xl p-4 space-y-2 text-sm">
-            <div className="flex justify-between text-gray-400"><span>You earn per message</span><span className="text-white">{priceDisplay(Math.floor(form.price_per_query * 0.85))}</span></div>
-            <div className="flex justify-between text-gray-400"><span>Platform fee (15%)</span><span>{priceDisplay(Math.floor(form.price_per_query * 0.15))}</span></div>
+          <div className="bg-[#141414] border border-[#262626] rounded-lg p-4 space-y-2 text-sm">
+            <div className="flex justify-between text-[#a1a1a1]"><span>You earn per message</span><span className="text-[#00E5A0]">{priceDisplay(Math.floor(form.price_per_query * 0.85))}</span></div>
+            <div className="flex justify-between text-[#a1a1a1]"><span>Platform fee (15%)</span><span>{priceDisplay(Math.floor(form.price_per_query * 0.15))}</span></div>
           </div>
         </div>
       )}
 
       {step === 3 && (
-        <div className="bg-gray-900 rounded-xl p-6 space-y-4">
-          <div><span className="text-sm text-gray-500">Name</span><p className="text-white font-medium">{form.name}</p></div>
-          <div><span className="text-sm text-gray-500">URL</span><p className="text-coral-400">ai.useorni.xyz/models/{form.slug}</p></div>
-          <div><span className="text-sm text-gray-500">Base Model</span><p className="text-white">{selectedBaseModel?.name}</p></div>
-          <div><span className="text-sm text-gray-500">Price</span><p className="text-white">{priceDisplay(form.price_per_query)} per message</p></div>
-          <div><span className="text-sm text-gray-500">System Prompt</span><p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-4">{form.system_prompt}</p></div>
-          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-sm text-green-300">
+        <div className="bg-[#141414] border border-[#262626] rounded-lg p-6 space-y-4">
+          <div><span className="text-sm text-[#666]">Name</span><p className="text-[#fafafa] font-medium">{form.name}</p></div>
+          <div><span className="text-sm text-[#666]">URL</span><p className="text-[#a1a1a1]">kinakuta.xyz/models/{form.slug}</p></div>
+          <div><span className="text-sm text-[#666]">Base Model</span><p className="text-[#fafafa]">{selectedBaseModel?.name}</p></div>
+          <div><span className="text-sm text-[#666]">Price</span><p className="text-[#fafafa]">{priceDisplay(form.price_per_query)} per message</p></div>
+          <div><span className="text-sm text-[#666]">System Prompt</span><p className="text-[#a1a1a1] text-sm whitespace-pre-wrap line-clamp-4">{form.system_prompt}</p></div>
+          <div className="bg-[#00E5A0]/10 border border-[#00E5A0]/20 rounded-lg p-3 text-sm text-[#00E5A0]">
             Your model will be live immediately after creation!
           </div>
         </div>
       )}
 
       <div className="flex justify-between mt-10">
-        <button onClick={() => (step === 0 ? router.back() : setStep(step - 1))} className="flex items-center gap-2 px-6 py-3 text-gray-400 hover:text-white transition-colors">
+        <button onClick={() => (step === 0 ? router.back() : setStep(step - 1))} className="flex items-center gap-2 px-6 py-3 text-[#a1a1a1] hover:text-[#fafafa] transition-colors active:scale-[0.98]">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         {step < STEPS.length - 1 ? (
-          <button onClick={() => setStep(step + 1)} disabled={step === 0 && !form.name} className="flex items-center gap-2 px-6 py-3 bg-coral-500 hover:bg-coral-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors">
+          <button onClick={() => setStep(step + 1)} disabled={step === 0 && !form.name} className="flex items-center gap-2 px-6 py-3 bg-[#fafafa] hover:bg-[#e5e5e5] text-[#0a0a0a] rounded-lg font-medium disabled:opacity-50 transition-colors active:scale-[0.98]">
             Next <ArrowRight className="w-4 h-4" />
           </button>
         ) : (
-          <button onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-coral-500 to-purple-500 hover:from-coral-600 hover:to-purple-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors">
+          <button onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 px-6 py-3 bg-[#fafafa] hover:bg-[#e5e5e5] text-[#0a0a0a] rounded-lg font-medium disabled:opacity-50 transition-colors active:scale-[0.98]">
             {loading ? 'Creating...' : 'Create & Go Live'} <Sparkles className="w-4 h-4" />
           </button>
         )}
