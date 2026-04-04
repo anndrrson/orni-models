@@ -130,7 +130,7 @@ pub async fn openapi_json(
                 "post": {
                     "summary": "Chat completion (OpenAI-compatible)",
                     "x-payment-info": {
-                        "price": {"mode": "fixed", "currency": "USDC", "amount": "0.05"},
+                        "price": {"mode": "fixed", "currency": "USD", "amount": "0.05"},
                         "protocols": [{"x402": {}}]
                     },
                     "requestBody": {

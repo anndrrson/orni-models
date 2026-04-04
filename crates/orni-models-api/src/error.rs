@@ -70,14 +70,16 @@ impl IntoResponse for AppError {
                     "accepts": [{
                         "scheme": "exact",
                         "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-                        "maxAmountRequired": amount_micro_usdc.to_string(),
+                        "amount": amount_micro_usdc.to_string(),
+                        "asset": "USDC",
                         "payTo": pay_to,
-                        "resource": format!("/v1/chat/completions?model={}", model_slug),
-                        "description": format!("Chat with {} on ghola.xyz", model_name),
-                        "mimeType": "text/event-stream",
+                        "maxTimeoutSeconds": 60,
+                        "resource": {
+                            "url": format!("/v1/chat/completions?model={}", model_slug),
+                            "description": format!("Chat with {} on ghola.xyz", model_name),
+                            "mimeType": "text/event-stream"
+                        },
                         "extra": {
-                            "currency": "USDC",
-                            "pricePerQuery": amount_micro_usdc,
                             "platform": "ghola.xyz",
                             "model": model_slug,
                         }

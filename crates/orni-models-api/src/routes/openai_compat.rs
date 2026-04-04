@@ -337,16 +337,18 @@ pub async fn x402_discovery(
         "accepts": [{
             "scheme": "exact",
             "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-            "maxAmountRequired": "50000",
+            "amount": "50000",
+            "asset": "USDC",
             "payTo": pay_to,
-            "resource": "/v1/chat/completions",
-            "description": "AI model inference on ghola.xyz — chat with any open-source model",
-            "mimeType": "text/event-stream",
+            "maxTimeoutSeconds": 60,
+            "resource": {
+                "url": "/v1/chat/completions",
+                "description": "AI model inference on ghola.xyz — chat with any open-source model",
+                "mimeType": "text/event-stream"
+            },
             "extra": {
-                "currency": "USDC",
                 "platform": "ghola.xyz",
-                "models": ["llama-3-8b", "llama-3-70b", "qwen-32b", "deepseek-r1-120b", "kimi-k2"],
-                "priceRange": {"min": 50000, "max": 200000},
+                "models": ["llama-3-8b", "llama-3-70b", "qwen-32b", "deepseek-r1-120b", "kimi-k2"]
             }
         }]
     });
