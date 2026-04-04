@@ -10,6 +10,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;
 
+use axum::response::IntoResponse;
 use crate::error::{AppError, AppResult};
 use crate::services::inference::InferenceService;
 use crate::state::AppState;
@@ -26,8 +27,31 @@ use orni_models_types::{InferenceChatMessage, Model, ModelStatus, OpenAIChatRequ
 pub async fn chat_completions(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Json(req): Json<OpenAIChatRequest>,
+    body: Result<Json<OpenAIChatRequest>, axum::extract::rejection::JsonRejection>,
+) -> Response {
+    match chat_completions_inner(state, headers, body).await {
+        Ok(sse) => sse.into_response(),
+        Err(err) => err.into_response(),
+    }
+}
+
+async fn chat_completions_inner(
+    state: Arc<AppState>,
+    headers: HeaderMap,
+    body: Result<Json<OpenAIChatRequest>, axum::extract::rejection::JsonRejection>,
 ) -> AppResult<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
+    // If JSON parsing fails (no body, wrong content-type, etc), return x402 payment required
+    let Json(req) = match body {
+        Ok(json) => json,
+        Err(_) => {
+            return Err(AppError::X402PaymentRequired {
+                pay_to: state.config.escrow_wallet_address.clone(),
+                amount_micro_usdc: 50000,
+                model_slug: "any".into(),
+                model_name: "AI Model".into(),
+            });
+        }
+    };
     // ── Resolve the model first (needed for pricing in 402 response) ──
     let model = sqlx::query_as::<_, Model>(
         "SELECT * FROM models WHERE (slug = $1 OR base_model = $1 OR provider_model_id = $1) AND status = $2",
