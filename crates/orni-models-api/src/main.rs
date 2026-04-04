@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let db = PgPoolOptions::new()
-        .max_connections(4)
+        .max_connections(10)
         .acquire_timeout(std::time::Duration::from_secs(5))
         .idle_timeout(std::time::Duration::from_secs(300))
         .max_lifetime(std::time::Duration::from_secs(1800))
