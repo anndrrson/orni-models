@@ -10,14 +10,12 @@ pub async fn ensure_schema(db: &PgPool) -> anyhow::Result<()> {
     // Set search_path for this session (all subsequent queries use orni schema first)
     sqlx::query("SET search_path TO orni, public").execute(db).await?;
 
-    // Enums (in orni schema)
-    sqlx::query(r#"
-        DO $$ BEGIN CREATE TYPE orni.model_status AS ENUM ('draft', 'training', 'live', 'paused', 'failed'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-        DO $$ BEGIN CREATE TYPE orni.source_type AS ENUM ('text', 'pdf', 'youtube', 'blog'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-        DO $$ BEGIN CREATE TYPE orni.content_status AS ENUM ('pending', 'processing', 'ready', 'failed'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-        DO $$ BEGIN CREATE TYPE orni.fine_tune_status AS ENUM ('pending', 'running', 'completed', 'failed', 'cancelled'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-        DO $$ BEGIN CREATE TYPE orni.chat_role AS ENUM ('system', 'user', 'assistant'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-    "#).execute(db).await?;
+    // Enums (in orni schema) — each must be a separate query
+    sqlx::query("DO $$ BEGIN CREATE TYPE orni.model_status AS ENUM ('draft', 'training', 'live', 'paused', 'failed'); EXCEPTION WHEN duplicate_object THEN NULL; END $$").execute(db).await?;
+    sqlx::query("DO $$ BEGIN CREATE TYPE orni.source_type AS ENUM ('text', 'pdf', 'youtube', 'blog'); EXCEPTION WHEN duplicate_object THEN NULL; END $$").execute(db).await?;
+    sqlx::query("DO $$ BEGIN CREATE TYPE orni.content_status AS ENUM ('pending', 'processing', 'ready', 'failed'); EXCEPTION WHEN duplicate_object THEN NULL; END $$").execute(db).await?;
+    sqlx::query("DO $$ BEGIN CREATE TYPE orni.fine_tune_status AS ENUM ('pending', 'running', 'completed', 'failed', 'cancelled'); EXCEPTION WHEN duplicate_object THEN NULL; END $$").execute(db).await?;
+    sqlx::query("DO $$ BEGIN CREATE TYPE orni.chat_role AS ENUM ('system', 'user', 'assistant'); EXCEPTION WHEN duplicate_object THEN NULL; END $$").execute(db).await?;
 
     // Tables (in orni schema, using original names so queries work unchanged)
     sqlx::query(r#"
