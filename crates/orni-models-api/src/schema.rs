@@ -172,5 +172,10 @@ pub async fn ensure_schema(db: &PgPool) -> anyhow::Result<()> {
         ON CONFLICT DO NOTHING
     "#).execute(db).await.ok();
 
+    // Update free tier on existing platform models (seed uses ON CONFLICT DO NOTHING
+    // so this handles models created before the free tier bump)
+    sqlx::query("UPDATE orni.models SET free_queries_per_day = 20 WHERE is_platform_model = true AND free_queries_per_day < 20")
+        .execute(db).await.ok();
+
     Ok(())
 }
