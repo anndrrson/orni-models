@@ -231,6 +231,18 @@ pub struct CreateModelRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct QuickListRequest {
+    pub endpoint_url: String,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct QuickListResponse {
+    pub model: Model,
+    pub detected_models: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct UpdateModelRequest {
     pub name: Option<String>,
     pub description: Option<String>,

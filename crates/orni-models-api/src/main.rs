@@ -110,6 +110,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/creator/earnings", get(routes::creator::get_earnings))
         // Models
         .route("/models/create", post(routes::models::create_model))
+        .route("/models/quick-list", post(routes::models::quick_list_model))
         .route("/models/id/{id}", put(routes::models::update_model))
         .route(
             "/models/id/{id}/content",

@@ -9,7 +9,7 @@ use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 use orni_models_types::{
     AddContentRequest, ContentSource, CreateModelRequest, CreateReviewRequest, Model,
-    ModelReview, ReviewWithUser, UpdateModelRequest,
+    ModelReview, QuickListRequest, QuickListResponse, ReviewWithUser, UpdateModelRequest,
 };
 
 pub async fn create_model(
@@ -269,4 +269,189 @@ pub async fn get_reviews(
     .await?;
 
     Ok(Json(reviews))
+}
+
+// ── Quick List ──
+
+#[derive(serde::Deserialize)]
+struct ProbeModelsResponse {
+    data: Vec<ProbeModelEntry>,
+}
+
+#[derive(serde::Deserialize)]
+struct ProbeModelEntry {
+    id: String,
+}
+
+fn slugify(name: &str) -> String {
+    let base: String = name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect();
+    let trimmed = base.trim_matches('-').to_string();
+    // Collapse consecutive hyphens
+    let mut result = String::new();
+    let mut prev_dash = false;
+    for c in trimmed.chars() {
+        if c == '-' {
+            if !prev_dash {
+                result.push(c);
+            }
+            prev_dash = true;
+        } else {
+            result.push(c);
+            prev_dash = false;
+        }
+    }
+    // Append random suffix for uniqueness
+    let suffix = format!("{:04x}", rand::random::<u16>());
+    if result.is_empty() {
+        format!("model-{suffix}")
+    } else {
+        format!("{result}-{suffix}")
+    }
+}
+
+/// POST /api/models/quick-list
+///
+/// One-click model listing. Paste an endpoint URL, get a live model.
+/// Probes the endpoint to auto-detect model names.
+pub async fn quick_list_model(
+    State(state): State<Arc<AppState>>,
+    claims: axum::Extension<Claims>,
+    Json(req): Json<QuickListRequest>,
+) -> AppResult<Json<QuickListResponse>> {
+    let user_id: Uuid = claims
+        .sub
+        .parse()
+        .map_err(|_| AppError::Unauthorized("Invalid token".into()))?;
+
+    // Validate endpoint URL
+    let url = req.endpoint_url.trim().trim_end_matches('/');
+    if url.is_empty() {
+        return Err(AppError::BadRequest("endpoint_url is required".into()));
+    }
+    if !url.starts_with("https://")
+        && !url.starts_with("http://localhost")
+        && !url.starts_with("http://127.0.0.1")
+    {
+        return Err(AppError::BadRequest(
+            "endpoint_url must use HTTPS (or localhost for testing)".into(),
+        ));
+    }
+    if url.len() > 2048 {
+        return Err(AppError::BadRequest("endpoint_url too long".into()));
+    }
+
+    // Rate limit: 5 models per user per day
+    let today_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM models WHERE creator_id = $1 AND created_at > NOW() - INTERVAL '1 day'",
+    )
+    .bind(user_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+
+    if today_count >= 5 {
+        return Err(AppError::BadRequest(
+            "You can list at most 5 models per day".into(),
+        ));
+    }
+
+    // Probe endpoint to detect models (best-effort, non-blocking on failure)
+    let probe_url = if url.ends_with("/v1") || url.ends_with("/v1/") {
+        format!("{}/models", url.trim_end_matches('/'))
+    } else {
+        format!("{}/v1/models", url)
+    };
+
+    let detected_models: Vec<String> = match state
+        .http_client
+        .get(&probe_url)
+        .timeout(std::time::Duration::from_secs(5))
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            match resp.json::<ProbeModelsResponse>().await {
+                Ok(body) => body.data.into_iter().map(|m| m.id).collect(),
+                Err(_) => vec![],
+            }
+        }
+        _ => vec![],
+    };
+
+    // Determine model name
+    let model_name = req
+        .name
+        .filter(|n| !n.trim().is_empty())
+        .or_else(|| detected_models.first().cloned())
+        .unwrap_or_else(|| {
+            // Fallback: extract hostname
+            url.split("://")
+                .nth(1)
+                .and_then(|h| h.split('/').next())
+                .and_then(|h| h.split(':').next())
+                .unwrap_or("custom-model")
+                .to_string()
+        });
+
+    let slug = slugify(&model_name);
+    let base_model = detected_models
+        .first()
+        .cloned()
+        .unwrap_or_else(|| state.config.default_base_model.clone());
+
+    let description = if !detected_models.is_empty() {
+        format!(
+            "Self-hosted {} — {} model(s) available",
+            model_name,
+            detected_models.len()
+        )
+    } else {
+        format!("Self-hosted model at {}", url.split("://").nth(1).unwrap_or(url))
+    };
+
+    // Mark user as creator
+    sqlx::query("UPDATE users SET is_creator = true, slug = COALESCE(slug, $2) WHERE id = $1")
+        .bind(user_id)
+        .bind(&slug)
+        .execute(&state.db)
+        .await?;
+
+    // Create the model
+    let model = sqlx::query_as::<_, Model>(
+        r#"
+        INSERT INTO models (id, creator_id, slug, name, description, system_prompt, base_model,
+                           provider_model_id, status, price_per_query, category, tags,
+                           self_hosted_endpoint, free_queries_per_day)
+        VALUES ($1, $2, $3, $4, $5, 'You are a helpful assistant.', $6, $7, 'live', 100000,
+                'Technology', '{}', $8, 5)
+        RETURNING *
+        "#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(user_id)
+    .bind(&slug)
+    .bind(&model_name)
+    .bind(&description)
+    .bind(&base_model)
+    .bind(&base_model)
+    .bind(url)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| {
+        if let sqlx::Error::Database(ref db_err) = e {
+            if db_err.constraint() == Some("models_slug_key") {
+                return AppError::Conflict("A model with this name already exists. Try a different name.".into());
+            }
+        }
+        AppError::from(e)
+    })?;
+
+    Ok(Json(QuickListResponse {
+        model,
+        detected_models,
+    }))
 }
