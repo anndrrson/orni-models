@@ -67,26 +67,20 @@ async fn chat_completions_inner(
         model_name: req.model.clone(),
     })?;
 
-    // ── Check for x402 payment proof first ──
-    let x402_paid = if let Some(payment_header) = headers.get("x-payment").and_then(|v| v.to_str().ok()) {
-        // x402 payment proof: base64-encoded Solana transaction signature
-        // For now, we accept the proof and log it. Full on-chain verification is TODO.
-        // This allows agents to pay per-request without an account.
+    // ── x402 payment proof is logged but NOT accepted until on-chain verification ──
+    // The 402 response with payment instructions still works for x402 discovery.
+    // Actual payment verification will be added via Merit's facilitator.
+    if let Some(payment_header) = headers.get("x-payment").and_then(|v| v.to_str().ok()) {
         tracing::info!(
             model = %model.slug,
             payment_proof = %&payment_header[..payment_header.len().min(20)],
-            "x402 payment received"
+            "x402 payment received but verification not yet implemented — rejecting"
         );
-        true
-    } else {
-        false
-    };
+        // Fall through to standard auth — don't grant free access
+    }
 
-    // ── Standard API key auth (if no x402 payment) ──
-    let (user_id, model_id, is_free_query) = if x402_paid {
-        // x402 agents don't need accounts — skip auth and balance checks
-        (None, model.id, false)
-    } else {
+    // ── Standard API key auth ──
+    let (user_id, model_id, is_free_query) = {
         // Require API key
         let auth_header = headers
             .get("authorization")
@@ -141,16 +135,17 @@ async fn chat_completions_inner(
             }
         }
 
-        // Check balance (skip for free queries)
+        // Atomic balance check + deduction (prevents double-spending)
         if !is_free {
-            let balance: i64 =
-                sqlx::query_scalar("SELECT usdc_balance FROM users WHERE id = $1")
-                    .bind(uid)
-                    .fetch_one(&state.db)
-                    .await?;
+            let deducted: Option<i64> = sqlx::query_scalar(
+                "UPDATE users SET usdc_balance = usdc_balance - $1 WHERE id = $2 AND usdc_balance >= $1 RETURNING usdc_balance",
+            )
+            .bind(model.price_per_query)
+            .bind(uid)
+            .fetch_optional(&state.db)
+            .await?;
 
-            if balance < model.price_per_query {
-                // Return x402 payment instructions instead of generic 402
+            if deducted.is_none() {
                 return Err(AppError::X402PaymentRequired {
                     pay_to: state.config.escrow_wallet_address.clone(),
                     amount_micro_usdc: model.price_per_query,
@@ -181,10 +176,7 @@ async fn chat_completions_inner(
                 .execute(&state.db)
                 .await?;
         } else {
-            sqlx::query("UPDATE users SET usdc_balance = usdc_balance - $1 WHERE id = $2")
-                .bind(model.price_per_query)
-                .execute(&state.db)
-                .await?;
+            // Balance already deducted atomically above
 
             let platform_share =
                 model.price_per_query * state.config.platform_share_bps as i64 / 10_000;

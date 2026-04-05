@@ -35,7 +35,10 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::from_env();
 
     // Fail fast if JWT secret is the dev default in production
-    if config.jwt_secret == "dev-secret-change-me" && config.bind_addr.contains("0.0.0.0") {
+    if config.jwt_secret == "dev-secret-change-me" {
+        if config.bind_addr.contains("0.0.0.0") && std::env::var("ALLOW_DEV_SECRET").is_err() {
+            panic!("JWT_SECRET is the default 'dev-secret-change-me' — set a real secret in production! (set ALLOW_DEV_SECRET=1 to override)");
+        }
         tracing::warn!("JWT_SECRET is the dev default — set a strong secret in production!");
     }
 

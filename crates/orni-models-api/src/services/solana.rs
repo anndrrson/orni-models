@@ -71,6 +71,18 @@ pub async fn verify_deposit(
             continue;
         }
 
+        // Verify destination is the escrow wallet's token account
+        let destination = info["destination"].as_str().unwrap_or("");
+        if !config.escrow_wallet_address.is_empty() {
+            // The destination should be the escrow wallet's ATA
+            // For now, check that the destination is not the sender's own account
+            let source = info["source"].as_str().unwrap_or("");
+            if destination == source || destination.is_empty() {
+                continue; // Self-transfer or missing destination
+            }
+            // TODO: derive escrow ATA and compare exactly
+        }
+
         // Get amount (transferChecked uses tokenAmount.amount, transfer uses amount)
         let amount_str = if ix_type == Some("transferChecked") {
             info.pointer("/tokenAmount/amount")

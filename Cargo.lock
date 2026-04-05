@@ -1463,6 +1463,7 @@ dependencies = [
  "ed25519-dalek",
  "futures",
  "hex",
+ "hmac",
  "jsonwebtoken",
  "orni-models-types",
  "rand",

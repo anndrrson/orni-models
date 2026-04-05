@@ -63,15 +63,17 @@ pub async fn send_message(
         }
     }
 
-    // Check balance (skip for free queries)
+    // Atomic balance check + deduction (prevents double-spending race condition)
     if !is_free_query {
-        let balance: i64 =
-            sqlx::query_scalar("SELECT usdc_balance FROM users WHERE id = $1")
-                .bind(user_id)
-                .fetch_one(&state.db)
-                .await?;
+        let deducted: Option<i64> = sqlx::query_scalar(
+            "UPDATE users SET usdc_balance = usdc_balance - $1 WHERE id = $2 AND usdc_balance >= $1 RETURNING usdc_balance",
+        )
+        .bind(model.price_per_query)
+        .bind(user_id)
+        .fetch_optional(&state.db)
+        .await?;
 
-        if balance < model.price_per_query {
+        if deducted.is_none() {
             return Err(AppError::InsufficientBalance);
         }
     }
@@ -129,11 +131,7 @@ pub async fn send_message(
             .execute(&state.db)
             .await?;
     } else {
-        // Deduct balance
-        sqlx::query("UPDATE users SET usdc_balance = usdc_balance - $1 WHERE id = $2")
-            .bind(model.price_per_query)
-            .execute(&state.db)
-            .await?;
+        // Balance already deducted atomically above — just record the payment
 
         // Record payment with split
         let platform_share =

@@ -191,12 +191,62 @@ pub async fn create_checkout(
     })))
 }
 
-/// POST /api/payments/webhook — Stripe webhook handler (public, signature-verified)
+/// POST /api/payments/webhook — Stripe webhook handler with signature verification
 pub async fn stripe_webhook(
     State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
     body: String,
 ) -> AppResult<StatusCode> {
-    // Parse the event (simplified — in production, verify Stripe signature)
+    // Verify Stripe webhook signature
+    if let Some(ref secret) = state.config.stripe_webhook_secret {
+        let sig_header = headers
+            .get("stripe-signature")
+            .and_then(|v| v.to_str().ok())
+            .ok_or_else(|| AppError::Unauthorized("Missing Stripe-Signature header".into()))?;
+
+        // Parse t= and v1= from signature header
+        let mut timestamp = "";
+        let mut signature = "";
+        for part in sig_header.split(',') {
+            let part = part.trim();
+            if let Some(t) = part.strip_prefix("t=") {
+                timestamp = t;
+            } else if let Some(v) = part.strip_prefix("v1=") {
+                signature = v;
+            }
+        }
+
+        if timestamp.is_empty() || signature.is_empty() {
+            return Err(AppError::Unauthorized("Invalid Stripe-Signature format".into()));
+        }
+
+        // Compute expected signature: HMAC-SHA256(secret, "timestamp.body")
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
+        type HmacSha256 = Hmac<Sha256>;
+
+        let signed_payload = format!("{}.{}", timestamp, body);
+        let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
+            .map_err(|_| AppError::Internal("HMAC init failed".into()))?;
+        mac.update(signed_payload.as_bytes());
+        let expected = hex::encode(mac.finalize().into_bytes());
+
+        if expected != signature {
+            tracing::warn!("Stripe webhook signature mismatch");
+            return Err(AppError::Unauthorized("Invalid webhook signature".into()));
+        }
+
+        // Check timestamp is within 5 minutes (replay protection)
+        if let Ok(ts) = timestamp.parse::<i64>() {
+            let now = chrono::Utc::now().timestamp();
+            if (now - ts).abs() > 300 {
+                return Err(AppError::Unauthorized("Webhook timestamp too old".into()));
+            }
+        }
+    } else {
+        tracing::warn!("STRIPE_WEBHOOK_SECRET not set — webhook signature NOT verified");
+    }
+
     let event: serde_json::Value = serde_json::from_str(&body)
         .map_err(|_| AppError::BadRequest("Invalid webhook payload".into()))?;
 
