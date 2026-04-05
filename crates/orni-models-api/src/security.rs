@@ -299,6 +299,94 @@ pub fn validate_wallet_address(addr: &str) -> Result<(), &'static str> {
     Ok(())
 }
 
+// ── Prompt Injection Defense ──
+
+/// Known prompt injection patterns to detect and log.
+const INJECTION_PATTERNS: &[&str] = &[
+    "ignore previous instructions",
+    "ignore all previous",
+    "disregard previous",
+    "forget your instructions",
+    "you are now",
+    "new instructions:",
+    "system prompt:",
+    "system:",
+    "[INST]",
+    "<<SYS>>",
+    "<|im_start|>system",
+    "### instruction:",
+    "ignore the above",
+    "override:",
+    "jailbreak",
+    "DAN mode",
+    "developer mode",
+];
+
+/// Sanitize chat input: detect injection attempts, strip dangerous patterns.
+/// Returns (sanitized_message, was_injection_detected).
+pub fn sanitize_chat_input(input: &str) -> (String, bool) {
+    let lower = input.to_lowercase();
+    let mut detected = false;
+
+    for pattern in INJECTION_PATTERNS {
+        if lower.contains(pattern) {
+            detected = true;
+            tracing::warn!(
+                pattern = %pattern,
+                input_preview = %&input[..input.len().min(100)],
+                "PROMPT_INJECTION: Suspicious input detected"
+            );
+            break;
+        }
+    }
+
+    // Strip null bytes and control characters (except newlines/tabs)
+    let sanitized: String = input
+        .chars()
+        .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
+        .collect();
+
+    (sanitized, detected)
+}
+
+// ── Internal Service Signing ──
+
+/// Sign an outbound request to an internal service.
+/// Returns the HMAC-SHA256 hex signature of the body.
+pub fn sign_internal_request(body: &[u8], secret: &str) -> String {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    type HmacSha256 = Hmac<Sha256>;
+
+    let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
+        .expect("HMAC key length is always valid");
+    mac.update(body);
+    hex::encode(mac.finalize().into_bytes())
+}
+
+/// Verify an inbound request from an internal service.
+pub fn verify_internal_request(body: &[u8], signature: &str, secret: &str) -> bool {
+    let expected = sign_internal_request(body, secret);
+    // Constant-time comparison
+    expected.len() == signature.len()
+        && expected
+            .bytes()
+            .zip(signature.bytes())
+            .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+            == 0
+}
+
+// ── Security.txt Route ──
+
+pub async fn security_txt() -> axum::response::Response {
+    use axum::response::IntoResponse;
+    (
+        axum::http::StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+        "Contact: mailto:anderson.a.obrien@gmail.com\nExpires: 2027-04-05T00:00:00.000Z\nPreferred-Languages: en\nCanonical: https://ghola.xyz/.well-known/security.txt\nPolicy: https://ghola.xyz/security-policy\n",
+    ).into_response()
+}
+
 // ── Audit Logger ──
 
 pub fn audit_log(action: &str, user_id: &str, target: &str, ip: &str, metadata: &str) {

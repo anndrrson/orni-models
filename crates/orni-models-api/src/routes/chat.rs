@@ -102,6 +102,9 @@ pub async fn send_message(
         session.id
     };
 
+    // Sanitize user input (prompt injection defense)
+    let (sanitized_message, _injection_detected) = crate::security::sanitize_chat_input(&req.message);
+
     // Save user message
     sqlx::query(
         "INSERT INTO chat_messages (id, session_id, role, content) VALUES ($1, $2, $3, $4)",
@@ -109,7 +112,7 @@ pub async fn send_message(
     .bind(Uuid::new_v4())
     .bind(session_id)
     .bind(ChatRole::User)
-    .bind(&req.message)
+    .bind(&sanitized_message)
     .execute(&state.db)
     .await?;
 

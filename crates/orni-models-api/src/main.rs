@@ -230,6 +230,7 @@ async fn main() -> anyhow::Result<()> {
             get(routes::discovery::well_known_x402),
         )
         .route("/openapi.json", get(routes::discovery::openapi_json))
+        .route("/.well-known/security.txt", get(security::security_txt))
         .route(
             "/v1/chat/completions",
             post(routes::openai_compat::chat_completions)
