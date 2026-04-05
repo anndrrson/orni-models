@@ -50,3 +50,6 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 dotenvy = { workspace = true }
 urlencoding = { workspace = true }
+
+# Solana payments
+said-solana = { workspace = true }

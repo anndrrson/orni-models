@@ -72,6 +72,33 @@ async fn main() -> anyhow::Result<()> {
         .redirect(reqwest::redirect::Policy::none())
         .build()?;
 
+    // Load escrow keypair for on-chain USDC settlements
+    let escrow_keypair: Option<[u8; 64]> = if let Some(ref path) = config.escrow_keypair_path {
+        match std::fs::read(path) {
+            Ok(bytes) => {
+                // Solana JSON keypair format: [u8; 64] as JSON array
+                let parsed: Vec<u8> = serde_json::from_slice(&bytes)
+                    .unwrap_or_else(|_| bytes.clone());
+                if parsed.len() == 64 {
+                    let mut arr = [0u8; 64];
+                    arr.copy_from_slice(&parsed);
+                    tracing::info!("Escrow keypair loaded — on-chain settlement enabled");
+                    Some(arr)
+                } else {
+                    tracing::warn!("Escrow keypair invalid length ({}), settlements disabled", parsed.len());
+                    None
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Could not load escrow keypair at {path}: {e} — settlements disabled");
+                None
+            }
+        }
+    } else {
+        tracing::info!("No ESCROW_KEYPAIR_PATH set — on-chain settlement disabled (Stripe-only mode)");
+        None
+    };
+
     let state = Arc::new(AppState {
         db,
         config: config.clone(),
@@ -79,7 +106,14 @@ async fn main() -> anyhow::Result<()> {
         nonce_store: Arc::new(NonceStore::new()),
         guest_rate_limits: Arc::new(Default::default()),
         auth_rate_limiter: Arc::new(state::AuthRateLimiter::new()),
+        escrow_keypair,
     });
+
+    // Spawn settlement loop (every 5 minutes)
+    if state.escrow_keypair.is_some() {
+        tokio::spawn(services::settlement::settlement_loop(state.clone()));
+        tracing::info!("Settlement loop started (5-minute cycle)");
+    }
 
     // CORS — locked to allowed origins only
     let allowed_origins: Vec<_> = config

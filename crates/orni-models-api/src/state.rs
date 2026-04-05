@@ -17,6 +17,9 @@ pub struct AppState {
     pub nonce_store: Arc<NonceStore>,
     pub guest_rate_limits: Arc<Mutex<HashMap<IpAddr, Vec<Instant>>>>,
     pub auth_rate_limiter: Arc<AuthRateLimiter>,
+    /// Escrow wallet keypair for on-chain USDC settlements.
+    /// None if no keypair is configured (Stripe-only mode).
+    pub escrow_keypair: Option<[u8; 64]>,
 }
 
 /// Simple rate limiter for auth endpoints (login/register).

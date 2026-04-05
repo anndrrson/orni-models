@@ -155,6 +155,25 @@ pub async fn ensure_schema(db: &PgPool) -> anyhow::Result<()> {
         UNIQUE(user_id, model_id)
     )"#).execute(db).await?;
 
+    // Settlement queue for on-chain USDC payouts
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS orni.settlement_queue (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            creator_id UUID NOT NULL REFERENCES orni.users(id) ON DELETE CASCADE,
+            creator_wallet TEXT,
+            amount_micro_usdc BIGINT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            tx_signature TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            settled_at TIMESTAMPTZ
+        )
+    "#).execute(db).await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_settlement_queue_status ON orni.settlement_queue(status)")
+        .execute(db).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_settlement_queue_wallet ON orni.settlement_queue(creator_wallet)")
+        .execute(db).await.ok();
+
     // Seed platform user + models
     sqlx::query(r#"
         INSERT INTO orni.users (id, wallet_address, display_name, is_creator)

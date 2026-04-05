@@ -34,6 +34,11 @@ base64 = "0.22"
 sha2 = "0.10"
 rand = "0.8"
 hex = "0.4"
+curve25519-dalek = { version = "4", features = ["digest"] }
+borsh = "0.10"
+
+# Solana (from SAID repo)
+said-solana = { git = "https://github.com/anndrrson/said.git", branch = "main" }
 
 # HTTP client
 reqwest = { version = "0.12", features = ["json", "stream"] }

@@ -167,6 +167,28 @@ pub async fn send_message(
         .execute(&state.db)
         .await?;
 
+        // Queue on-chain settlement (if creator has a wallet)
+        let creator_wallet: Option<String> = sqlx::query_scalar(
+            "SELECT wallet_address FROM users WHERE id = $1",
+        )
+        .bind(model.creator_id)
+        .fetch_optional(&state.db)
+        .await?
+        .flatten();
+
+        if let Some(ref wallet) = creator_wallet {
+            sqlx::query(
+                "INSERT INTO settlement_queue (id, creator_id, creator_wallet, amount_micro_usdc) VALUES ($1, $2, $3, $4)",
+            )
+            .bind(Uuid::new_v4())
+            .bind(model.creator_id)
+            .bind(wallet)
+            .bind(creator_share)
+            .execute(&state.db)
+            .await
+            .ok(); // Don't fail the chat if queueing fails
+        }
+
         // If model uses self-hosted node, record payment with SAID cloud
         if let Some(node_id) = model.self_hosted_node_id {
             let said_url = state.config.said_cloud_url.clone();
