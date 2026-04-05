@@ -15,6 +15,7 @@ mod config;
 mod error;
 mod routes;
 mod schema;
+mod security;
 mod services;
 mod state;
 
@@ -235,12 +236,32 @@ async fn main() -> anyhow::Result<()> {
                 .get(routes::openai_compat::x402_discovery),
         );
 
+    // Honeypot routes — trap attacker reconnaissance
+    let honeypots = Router::new()
+        .route("/wp-admin", get(security::honeypot))
+        .route("/wp-login.php", get(security::honeypot))
+        .route("/.env", get(security::honeypot))
+        .route("/api/.env", get(security::honeypot))
+        .route("/api/admin/users", post(security::honeypot))
+        .route("/api/internal/debug", get(security::honeypot))
+        .route("/phpMyAdmin", get(security::honeypot))
+        .route("/actuator", get(security::honeypot));
+
+    // Global rate limiter
+    let global_limiter = Arc::new(security::GlobalRateLimiter::new());
+    let anomaly_detector = Arc::new(security::AnomalyDetector::new());
+
     let app = Router::new()
+        .merge(honeypots)
         .merge(root_routes)
         .nest("/api", public.merge(protected))
         .with_state(state)
         // 256KB max request body
         .layer(DefaultBodyLimit::max(256 * 1024))
+        .layer(axum::Extension(global_limiter))
+        .layer(axum::Extension(anomaly_detector))
+        .layer(middleware::from_fn(security::rate_limit_middleware))
+        .layer(middleware::from_fn(security::security_headers))
         .layer(cors)
         .layer(TraceLayer::new_for_http());
 

@@ -332,12 +332,14 @@ pub async fn quick_list_model(
     if url.is_empty() {
         return Err(AppError::BadRequest("endpoint_url is required".into()));
     }
-    if !url.starts_with("https://")
-        && !url.starts_with("http://localhost")
-        && !url.starts_with("http://127.0.0.1")
-    {
+    if !url.starts_with("https://") {
         return Err(AppError::BadRequest(
-            "endpoint_url must use HTTPS (or localhost for testing)".into(),
+            "endpoint_url must use HTTPS".into(),
+        ));
+    }
+    if !crate::security::is_safe_url(url) {
+        return Err(AppError::BadRequest(
+            "endpoint_url points to a private/internal address".into(),
         ));
     }
     if url.len() > 2048 {
